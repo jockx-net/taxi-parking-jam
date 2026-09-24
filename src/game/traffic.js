@@ -142,9 +142,15 @@ export class Vehicle {
     return this.circlesAt(this, this.scale);
   }
 
+  // Taxis are drawn lot-sized while in the lot and shrink to road size as they
+  // join the ring road, so a long taxi in a big-celled lot doesn't swing its nose
+  // through the bays when turning onto the main road.
   scaleAt(path, s) {
     if (this.state !== "driving") return this.scaleTo;
-    return this.scaleFrom + (this.scaleTo - this.scaleFrom) * (s / path.length);
+    if (this.entryS === null) return this.scaleFrom + (this.scaleTo - this.scaleFrom) * (s / path.length);
+    const start = Math.max(0, this.mergeDist - 30);
+    const t = Math.max(0, Math.min(1, (s - start) / 100));
+    return this.scaleFrom + (this.scaleTo - this.scaleFrom) * t;
   }
 
   // Starts leaving the bay: reverse out, pivot to face the exit, drive off.
@@ -307,7 +313,8 @@ export class Traffic {
   }
 
   _mustYield(v, o, pose, reverse) {
-    if (o.priority < v.priority) return true;
+    const pushing = v.waitMs >= YIELD_TIMEOUT || v.s < v.pushUntilS;
+    if (o.priority < v.priority) return !(o.state === "parked" && pushing); // never held up for ever by a taxi merely parked in a bay
     if (reverse) return true;
     if (o.state === "reversing" || o.state === "pivoting") return true; // it is turning across the road
     const dx = o.x - pose.x;
@@ -315,7 +322,6 @@ export class Traffic {
     const d = Math.hypot(dx, dy) || 1;
     const along = (dx * Math.cos(pose.heading) + dy * Math.sin(pose.heading)) / d; // 1 = dead ahead
     if (o.isStationary()) {
-      const pushing = v.waitMs >= YIELD_TIMEOUT || v.s < v.pushUntilS;
       return along > 0.2 && !pushing; // give up on a stopped newer vehicle after a while
     }
     return along > 0.6 && Math.cos(o.heading - pose.heading) > 0.7; // following a moving one

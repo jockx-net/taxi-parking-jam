@@ -76,7 +76,7 @@ test("a newer vehicle waits for an occupied bay until the occupant has left", ()
   run(traffic, 3000);
   assert.equal(older.state, "parked");
 
-  const newer = vehicle("new", 2, bay);
+  const newer = vehicle("new", 2, bay, { waitFor: older, gateS: 200 });
   traffic.add(newer);
   let overlaps = 0;
   run(traffic, 3000, () => {
@@ -184,4 +184,35 @@ test("an older vehicle that waited out a stopped newer one drives on instead of 
   traffic.add(older);
   run(traffic, 15000);
   assert.equal(older.state, "parked");
+});
+
+test("a long taxi turning onto the main road gets past a taxi parked in the nearest bay", () => {
+  const MAIN_Y = 848;
+  const BAY_Y = 980;
+  const right = 654;
+  const roadScale = Math.min(0.6, 160 / (3 * 128));
+  for (const lot of [4, 6, 8]) {
+    const traffic = new Traffic();
+    const parkedPath = new RoadPath([P(570, BAY_Y), P(570, BAY_Y + 0.6)], 1);
+    const parked = new Vehicle({ id: "p", priority: 1, path: parkedPath, lengthCells: 3, cellPx: 128, scaleFrom: roadScale, scaleTo: roadScale });
+    parked.state = "parked";
+    traffic.add(parked);
+    const gridScale = 500 / lot / 128;
+    const path = new RoadPath([P(right, 300), P(right, MAIN_Y), P(150, MAIN_Y), P(150, BAY_Y)], 30);
+    const taxi = new Vehicle({ id: "v", priority: 2, path, lengthCells: 3, cellPx: 128, scaleFrom: gridScale, scaleTo: roadScale, entryS: 0, mergeDist: 0 });
+    traffic.add(taxi);
+    run(traffic, 25000);
+    assert.equal(taxi.state, "parked", `lot ${lot}x${lot}`);
+  }
+});
+
+test("a taxi is not held up for ever by an older taxi that is merely parked in its way", () => {
+  const traffic = new Traffic();
+  const parked = vehicle("parked", 1, [P(500, 0), P(500.6, 0)]);
+  parked.state = "parked";
+  traffic.add(parked);
+  const passer = vehicle("passer", 2, [P(0, 0), P(1000, 0)]);
+  traffic.add(passer);
+  run(traffic, 15000);
+  assert.equal(passer.state, "parked");
 });
