@@ -72,6 +72,8 @@ filled, and it leaves. Clear every taxi in the lot to win.
   the head matches.
 - When someone boards, everyone behind shifts forward, which may bring a new
   person into the head and reveal another at the end of the visible preview.
+- People who cannot board yet (everyone behind the head) stand inside a picket
+  fence; the fence shrinks as the queue shortens. There is no other head marker.
 - Boarding is animated (person walks to the taxi, seat fills, taxi departs).
 
 ## End conditions
@@ -94,6 +96,8 @@ filled, and it leaves. Clear every taxi in the lot to win.
   level and taxis keep that scale in the lot, on the road and in the bays. Small
   lots are simply drawn smaller, inside a ring road that is never narrower than
   the bays need.
+- The lot is plain, uniformly painted concrete (no grid: the cells mean nothing
+  to the player).
 - Stylized 2D cartoon art: top-down taxis per color and length with a long
   bonnet (grille, headlights, chevrons) so the front is unmistakable, people
   sprites, ring/main road, slot bays.

@@ -151,14 +151,8 @@ export class GameScene extends Phaser.Scene {
     marks.fillTriangle(12, MAIN_Y, 26, MAIN_Y - 9, 26, MAIN_Y + 9);
 
     const lot = this.add.graphics().setDepth(-5);
-    lot.fillStyle(0x20242f, 1).fillRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14);
-    lot.lineStyle(3, 0x4b5366, 1).strokeRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14);
-    const floor = this.add.tileSprite(this.origin.x, this.origin.y, w, h, "tile").setOrigin(0).setDepth(-4);
-    floor.setTileScale(this.gridScale(), this.gridScale());
-    const lines = this.add.graphics().setDepth(-3);
-    lines.lineStyle(1, 0xffffff, 0.08);
-    for (let x = 0; x <= grid.width; x++) lines.lineBetween(this.origin.x + x * this.cell, this.origin.y, this.origin.x + x * this.cell, this.origin.y + h);
-    for (let y = 0; y <= grid.height; y++) lines.lineBetween(this.origin.x, this.origin.y + y * this.cell, this.origin.x + w, this.origin.y + y * this.cell);
+    lot.fillStyle(0x858a94, 1).fillRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14); // plain concrete
+    lot.lineStyle(4, 0x555b68, 1).strokeRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14);
   }
 
   buildHud() {
@@ -184,17 +178,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildQueue() {
-    const head = this.config.queueHeadSize;
-    const a = this.queuePos(0);
-    const b = this.queuePos(head - 1);
-    this.headPanel = this.add
-      .rectangle((a.x + b.x) / 2, QUEUE_Y, b.x - a.x + QUEUE_SPACING + 8, 76, 0x3d8b5a, 0.35)
-      .setStrokeStyle(3, 0x5ad187);
-    this.add.text((a.x + b.x) / 2, QUEUE_Y - 58, "HEAD  -  can board", { ...TEXT, fontSize: "20px", color: "#5ad187" }).setOrigin(0.5);
     this.add.text(W / 2, QUEUE_Y + 54, "queue", { ...TEXT, fontSize: "18px", color: "#7f8aa0" }).setOrigin(0.5);
+    this.fenceBack = this.add.graphics().setDepth(4);
+    this.fenceFront = this.add.graphics().setDepth(6);
 
     this.displayQueue = this.level.queue.peek().map((p) => p.id);
     this.level.queue.peek().forEach((p, i) => this.spawnPerson(p, i, false));
+    this.drawFence();
+  }
+
+  // A picket-fence pen around the people who cannot board yet (everyone behind
+  // the head). Drawn in two layers so the people stand inside it.
+  drawFence() {
+    const back = this.fenceBack.clear();
+    const front = this.fenceFront.clear();
+    const first = this.config.queueHeadSize;
+    const last = this.displayQueue.length - 1;
+    if (last < first) return;
+    const left = this.queuePos(first).x - QUEUE_SPACING / 2 - 4;
+    const right = this.queuePos(last).x + QUEUE_SPACING / 2 + 4;
+    const wood = 0xc39a63;
+    const shade = 0x8a6438;
+
+    back.fillStyle(shade, 1).fillRect(left, QUEUE_Y - 30, right - left, 4); // rear rail
+    for (let x = left; x <= right; x += 18) back.fillStyle(shade, 1).fillRect(x - 3, QUEUE_Y - 38, 6, 14);
+
+    front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 14, right - left, 4); // front rail
+    front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 28, right - left, 4);
+    for (let x = left; x <= right; x += 18) {
+      front.fillStyle(wood, 1).fillRoundedRect(x - 4, QUEUE_Y + 8, 8, 30, 2);
+      front.lineStyle(1, shade, 1).strokeRoundedRect(x - 4, QUEUE_Y + 8, 8, 30, 2);
+    }
+    front.fillStyle(shade, 1).fillRoundedRect(left - 5, QUEUE_Y - 6, 10, 46, 3); // end posts
+    front.fillStyle(shade, 1).fillRoundedRect(right - 5, QUEUE_Y - 6, 10, 46, 3);
   }
 
   spawnPerson(person, index, fadeIn) {
@@ -234,7 +250,7 @@ export class GameScene extends Phaser.Scene {
 
   buildHint() {
     this.add
-      .text(W / 2, 1262, "Tap a bright taxi: it drives round the one-way street to a slot. Longer taxis\nhave more seats. People in the HEAD board taxis of their color.", {
+      .text(W / 2, 1262, "Tap a bright taxi: it drives round the one-way street to a slot. Longer taxis\nhave more seats. People not behind the fence board taxis of their color.", {
         ...TEXT,
         fontSize: "19px",
         align: "center",
@@ -471,6 +487,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   relayoutQueue() {
+    this.drawFence();
     this.displayQueue.forEach((id, i) => {
       const sprite = this.personSprites.get(id);
       const pos = this.queuePos(i);

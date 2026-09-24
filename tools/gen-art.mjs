@@ -100,21 +100,6 @@ function personSvg(color) {
 `;
 }
 
-const tile = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" fill="#3a4050"/>
-  <g fill="#454c5e" opacity="0.8">
-    <circle cx="14" cy="22" r="2"/><circle cx="52" cy="10" r="1.5"/><circle cx="96" cy="30" r="2"/>
-    <circle cx="30" cy="70" r="1.5"/><circle cx="76" cy="84" r="2"/><circle cx="112" cy="108" r="1.5"/>
-    <circle cx="20" cy="112" r="2"/><circle cx="64" cy="54" r="1.5"/><circle cx="104" cy="66" r="1.5"/>
-  </g>
-  <g fill="#30354a" opacity="0.8">
-    <circle cx="38" cy="30" r="1.5"/><circle cx="84" cy="8" r="1.5"/><circle cx="8" cy="86" r="1.5"/>
-    <circle cx="56" cy="104" r="2"/><circle cx="118" cy="52" r="1.5"/><circle cx="92" cy="120" r="1.5"/>
-  </g>
-  <path d="M0 0 H128 V128 H0 Z" fill="none" stroke="#f5f5f5" stroke-width="2" stroke-dasharray="14 18" opacity="0.16"/>
-</svg>
-`;
-
 const bay = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="220" viewBox="0 0 150 220">
   <rect x="4" y="4" width="142" height="212" rx="16" fill="#343a49"/>
   <path d="M4 20 V4 H146 V20 M4 200 V216 H146 V200" fill="none"/>
@@ -155,7 +140,6 @@ for (const color of Object.keys(COLORS)) {
   for (let length = 1; length <= 3; length++) writeFileSync(join(OUT, `taxi_${color}_${length}.svg`), taxiSvg(color, length));
   writeFileSync(join(OUT, `person_${color}.svg`), personSvg(color));
 }
-writeFileSync(join(OUT, "tile.svg"), tile);
 writeFileSync(join(OUT, "bay.svg"), bay);
 writeFileSync(join(OUT, "bg.svg"), bg);
 writeFileSync(join(OUT, "logo.svg"), logo);
