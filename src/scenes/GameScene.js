@@ -12,12 +12,13 @@ const CELL_SIZE = 58; // on-screen size of one lot cell = the reference size of 
 const RING_CY = 422; // vertical centre of the ring road
 const MIN_RING_HALF_W = 300; // the ring is never narrower than the bays need
 const MIN_RING_HALF_H = 200;
-const ROAD_W = 56;
-const LANE_GAP = 44; // lot edge to the centre line of the ring road
-const MAIN_Y = 848; // centre line of the main road (flows west to the exit)
+const ROAD_W = 76; // two lanes; a taxi takes roughly 55% of it
+const LANE_OFF = ROAD_W / 4; // centre of the right-hand lane, measured from the road's centre line
+const LANE_GAP = 52; // lot edge to the centre line of the ring road
+const MAIN_Y = 860; // centre line of the main road (flows west to the exit)
 const BAY_W = 140;
 const BAY_H = 196;
-const BAY_Y = 982;
+const BAY_Y = 1004;
 const SLOT_SPACING = 210;
 const QUEUE_Y = 1170;
 const QUEUE_SPACING = 56;
@@ -59,6 +60,11 @@ export class GameScene extends Phaser.Scene {
     const halfW = Math.max(lotW / 2 + LANE_GAP, MIN_RING_HALF_W);
     const halfH = Math.max(lotH / 2 + LANE_GAP, MIN_RING_HALF_H);
     this.lane = { left: W / 2 - halfW, right: W / 2 + halfW, top: RING_CY - halfH, bottom: RING_CY + halfH };
+    // Traffic drives on the right (clockwise round the ring, westbound on the main
+    // road), i.e. the inner lane of the ring and the northern lane of the main road.
+    const o = LANE_OFF;
+    this.laneC = { left: this.lane.left + o, right: this.lane.right - o, top: this.lane.top + o, bottom: this.lane.bottom - o };
+    this.mainLaneY = MAIN_Y - o;
 
     this.drawBackdrop();
     this.buildHud();
@@ -103,45 +109,51 @@ export class GameScene extends Phaser.Scene {
     const asphalt = 0x2b2f3b;
     const ringW = right - left;
     const ringH = bottom - top;
-    const extension = (color, pad) => roads.fillStyle(color, 1).fillRect(right - ROAD_W / 2 - pad, bottom - 40, ROAD_W + 2 * pad, MAIN_Y - bottom + 40);
+    const extension = (color, pad) => roads.fillStyle(color, 1).fillRect(right - ROAD_W / 2 - pad, bottom - 60, ROAD_W + 2 * pad, MAIN_Y - bottom + 60);
     const mainRoad = (color, pad) => roads.fillStyle(color, 1).fillRect(0, MAIN_Y - ROAD_W / 2 - pad, W, ROAD_W + 2 * pad);
-    roads.lineStyle(ROAD_W + 8, curb, 1).strokeRoundedRect(left, top, ringW, ringH, 40);
+    roads.lineStyle(ROAD_W + 8, curb, 1).strokeRoundedRect(left, top, ringW, ringH, 60);
     extension(curb, 4);
     mainRoad(curb, 4);
-    roads.lineStyle(ROAD_W, asphalt, 1).strokeRoundedRect(left, top, ringW, ringH, 40);
+    roads.lineStyle(ROAD_W, asphalt, 1).strokeRoundedRect(left, top, ringW, ringH, 60);
     extension(asphalt, 0);
     mainRoad(asphalt, 0);
 
     const pavement = this.add.graphics().setDepth(-7);
     pavement.fillStyle(0x858a94, 1).fillRoundedRect(left + ROAD_W / 2 + 4, top + ROAD_W / 2 + 4, ringW - ROAD_W - 8, ringH - ROAD_W - 8, 22);
 
-    // Road paint for one-way streets: white P-8a straight-ahead arrows along every
-    // lane (no centre line, which would suggest two-way traffic) and a P-12 stop
-    // line where the right-hand lane meets the main road.
+    // Two-way road paint: a dashed centre line, with direction arrows in the lane
+    // that traffic actually uses (the right-hand one).
     const marks = this.add.graphics().setDepth(-5);
-    marks.fillStyle(0xffffff, 0.88);
-    const arrow = (x, y, angle) => {
-      // long slim shaft narrowing to the tail, triangular head; pointing along +x before rotation
-      const local = [
-        [-32, -3.5], [8, -6], [8, -14], [32, 0], [8, 14], [8, 6], [-32, 3.5],
-      ];
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      marks.fillPoints(local.map(([px, py]) => ({ x: x + px * cos - py * sin, y: y + px * sin + py * cos })), true);
+    marks.lineStyle(3, 0xffffff, 0.35);
+    const dashed = (x1, y1, x2, y2) => {
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      const ux = (x2 - x1) / len;
+      const uy = (y2 - y1) / len;
+      for (let d = 0; d < len; d += 34) {
+        const e = Math.min(d + 18, len);
+        marks.lineBetween(x1 + ux * d, y1 + uy * d, x1 + ux * e, y1 + uy * e);
+      }
     };
-    const WEST = Math.PI;
-    const NORTH = -Math.PI / 2;
-    const EAST = 0;
-    const SOUTH = Math.PI / 2;
-    for (let x = right - 120; x > left + 60; x -= 150) arrow(x, bottom, WEST);
-    for (let y = bottom - 120; y > top + 60; y -= 150) arrow(left, y, NORTH);
-    for (let x = left + 120; x < right - 60; x += 150) arrow(x, top, EAST);
-    for (let y = top + 110; y < MAIN_Y - 90; y += 150) arrow(right, y, SOUTH);
-    for (let x = W - 60; x > 110; x -= 150) arrow(x, MAIN_Y, WEST);
+    dashed(right - 60, bottom, left + 60, bottom);
+    dashed(left, bottom - 60, left, top + 60);
+    dashed(left + 60, top, right - 60, top);
+    dashed(right, top + 60, right, MAIN_Y - 40);
+    dashed(W, MAIN_Y, 90, MAIN_Y);
 
-    marks.fillRect(right - ROAD_W / 2 + 3, MAIN_Y - ROAD_W / 2 - 22, ROAD_W - 6, 9); // P-12 stop line
+    marks.fillStyle(0xf5c518, 0.85);
+    const arrow = (x, y, dir) => {
+      const [dx, dy] = { west: [-1, 0], east: [1, 0], north: [0, -1], south: [0, 1] }[dir];
+      marks.fillTriangle(x + dx * 11, y + dy * 11, x - dx * 7 - dy * 9, y - dy * 7 + dx * 9, x - dx * 7 + dy * 9, y - dy * 7 - dx * 9);
+    };
+    const c = this.laneC;
+    for (let x = right - 100; x > left + 70; x -= 130) arrow(x, c.bottom, "west");
+    for (let y = bottom - 100; y > top + 70; y -= 130) arrow(c.left, y, "north");
+    for (let x = left + 100; x < right - 70; x += 130) arrow(x, c.top, "east");
+    for (let y = top + 100; y < MAIN_Y - 100; y += 130) arrow(c.right, y, "south");
+    for (let x = W - 60; x > 110; x -= 130) arrow(x, this.mainLaneY, "west");
 
     this.add.text(46, MAIN_Y, "EXIT", { ...TEXT, fontSize: "20px", fontStyle: "bold", color: "#f5c518" }).setOrigin(0.5).setDepth(-4);
+    marks.fillTriangle(12, MAIN_Y, 26, MAIN_Y - 9, 26, MAIN_Y + 9);
   }
 
   buildHud() {
@@ -167,7 +179,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildQueue() {
-    this.add.text(W / 2, QUEUE_Y + 54, "queue", { ...TEXT, fontSize: "18px", color: "#7f8aa0" }).setOrigin(0.5);
+    this.add.text(W / 2, QUEUE_Y + 48, "queue", { ...TEXT, fontSize: "18px", color: "#7f8aa0" }).setOrigin(0.5);
     this.fenceBack = this.add.graphics().setDepth(4);
     this.fenceFront = this.add.graphics().setDepth(6);
 
@@ -236,7 +248,7 @@ export class GameScene extends Phaser.Scene {
 
   buildHint() {
     this.add
-      .text(W / 2, 1262, "Tap a bright taxi: it drives round the one-way street to a slot. Longer taxis\nhave more seats. People not behind the fence board taxis of their color.", {
+      .text(W / 2, 1259, "Tap a bright taxi: it drives round the one-way street to a slot. Longer taxis\nhave more seats. People not behind the fence board taxis of their color.", {
         ...TEXT,
         fontSize: "19px",
         align: "center",
@@ -309,7 +321,7 @@ export class GameScene extends Phaser.Scene {
   // along the bottom, north up the left, east along the top, south down the
   // right), onto the main road and into its slot bay.
   routeFor(taxi, slot) {
-    const { left, right, top, bottom } = this.lane;
+    const { left, right, top, bottom } = this.laneC;
     const from = this.taxiCenter(taxi);
     const slotX = this.slotCenter(slot).x;
     const pts = [from];
@@ -317,7 +329,7 @@ export class GameScene extends Phaser.Scene {
     else if (taxi.dir === "left") pts.push({ x: left, y: from.y }, { x: left, y: top }, { x: right, y: top });
     else if (taxi.dir === "up") pts.push({ x: from.x, y: top }, { x: right, y: top });
     else pts.push({ x: right, y: from.y });
-    pts.push({ x: right, y: MAIN_Y }, { x: slotX, y: MAIN_Y }, { x: slotX, y: BAY_Y });
+    pts.push({ x: right, y: this.mainLaneY }, { x: slotX, y: this.mainLaneY }, { x: slotX, y: BAY_Y });
     return pts;
   }
 
@@ -340,7 +352,7 @@ export class GameScene extends Phaser.Scene {
   // Where a taxi joins the ring road, as a distance along the ring measured from
   // the bottom-right corner in the direction of traffic (west, north, east, south).
   trackEntry(taxi, from) {
-    const { left, right, top, bottom } = this.lane;
+    const { left, right, top, bottom } = this.laneC;
     const w = right - left;
     const h = bottom - top;
     if (taxi.dir === "down") return { point: { x: from.x, y: bottom }, s: right - from.x };
@@ -355,8 +367,8 @@ export class GameScene extends Phaser.Scene {
   // front of a nearer one). Only the final approach is checked: the ring road's
   // far side passes close to the bays, but nobody should queue there.
   gateFor(vehicle, slot) {
-    const zones = this.level.slots.map((_, i) => [{ x: this.slotCenter(i).x, y: MAIN_Y + 6, r: 125 }]);
-    const approach = vehicle.path.length - (BAY_Y - MAIN_Y) - (this.lane.right - this.slotCenter(slot).x) - 300;
+    const zones = this.level.slots.map((_, i) => [{ x: this.slotCenter(i).x, y: this.mainLaneY, r: 125 }]);
+    const approach = vehicle.path.length - (BAY_Y - this.mainLaneY) - (this.laneC.right - this.slotCenter(slot).x) - 300;
     for (let s = Math.max(0, approach); s < vehicle.path.length; s += 4) {
       const body = vehicle.circlesAt(vehicle.path.poseAt(s), vehicle.scaleAt(vehicle.path, s));
       if (zones.some((zone) => circlesOverlap(body, zone, 12))) return Math.max(0, s - 4);
@@ -388,7 +400,7 @@ export class GameScene extends Phaser.Scene {
     const from = this.taxiCenter(taxi);
     const entry = this.trackEntry(taxi, from);
     const path = new RoadPath(this.routeFor(taxi, slot), 30);
-    const bayLeg = BAY_Y - MAIN_Y;
+    const bayLeg = BAY_Y - this.mainLaneY;
     const vehicle = new Vehicle({
       id: taxiId,
       priority: ++this.selectionCount,
@@ -489,7 +501,7 @@ export class GameScene extends Phaser.Scene {
     view.dots = [];
     view.taxiId = null;
     const x = this.slotCenter(slot).x;
-    const roadY = MAIN_Y + 6;
+    const roadY = this.mainLaneY;
     this.vehicles.get(taxiId).beginDeparture({
       reversePath: new RoadPath([{ x, y: BAY_Y }, { x, y: roadY }]),
       leavePath: new RoadPath([{ x, y: roadY }, { x: -320, y: roadY }]),
@@ -502,9 +514,9 @@ export class GameScene extends Phaser.Scene {
   // so it (and everyone queued behind it) isn't held up for nothing.
   tryReassign(v) {
     if (v.state !== "driving" || !v.waitFor || v.waitFor.hasLeftBay() || v.entryS === null) return;
-    const { left, right, top, bottom } = this.lane;
-    const onRightLane = v.x >= right - 6 && v.y > top && v.y < MAIN_Y - 40 && Math.abs(v.heading - Math.PI / 2) < 0.3;
-    const onMainRoad = Math.abs(v.y - MAIN_Y) < 30 && Math.abs(v.heading - Math.PI) < 0.3;
+    const { left, right, top, bottom } = this.laneC;
+    const onRightLane = v.x >= right - 6 && v.y > top && v.y < this.mainLaneY - 40 && Math.abs(v.heading - Math.PI / 2) < 0.3;
+    const onMainRoad = Math.abs(v.y - this.mainLaneY) < 30 && Math.abs(v.heading - Math.PI) < 0.3;
     if (!onRightLane && !onMainRoad) return;
 
     let target = null;
@@ -524,15 +536,15 @@ export class GameScene extends Phaser.Scene {
 
     const slotX = this.slotCenter(target).x;
     const pts = [{ x: v.x, y: v.y }];
-    if (onRightLane) pts.push({ x: right, y: MAIN_Y });
-    pts.push({ x: slotX, y: MAIN_Y }, { x: slotX, y: BAY_Y });
+    if (onRightLane) pts.push({ x: right, y: this.mainLaneY });
+    pts.push({ x: slotX, y: this.mainLaneY }, { x: slotX, y: BAY_Y });
     v.path = new RoadPath(pts, 30);
     v.s = 0;
     v.mergeDist = 0;
     const w = right - left;
     const h = bottom - top;
-    v.entryS = onRightLane ? 2 * w + h + (v.y - top) : 2 * w + h + (MAIN_Y - top) + (right - v.x);
-    v.bayLegS = v.path.length - (BAY_Y - MAIN_Y) - 30;
+    v.entryS = onRightLane ? 2 * w + h + (v.y - top) : 2 * w + h + (this.mainLaneY - top) + (right - v.x);
+    v.bayLegS = v.path.length - (BAY_Y - this.mainLaneY) - 30;
     v.bay = target;
     v.waitFor = this.lastInSlot[target] ?? null;
     v.gateS = this.gateFor(v, target);

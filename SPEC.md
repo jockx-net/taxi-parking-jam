@@ -49,9 +49,11 @@ filled, and it leaves. Clear every taxi in the lot to win.
   really reached its bay (boarding people walk to the taxi only then).
 - Win or lose is announced only once all movement has finished.
 
-- Road paint follows Polish one-way conventions: white P-8a straight-ahead
-  arrows along every lane (no centre line, which would suggest two-way traffic)
-  and a P-12 stop line where the right-hand lane meets the main road.
+- The roads are painted as ordinary two-way streets (dashed centre line, a
+  direction arrow in each lane's traffic direction) and are wide enough that a
+  taxi takes only about 55% of the width. Traffic keeps to the right: clockwise
+  round the ring (the inner lane) and westbound in the northern lane of the main
+  road, and a taxi turns across the empty lane to enter its bay.
 
 ## Boarding slots
 
