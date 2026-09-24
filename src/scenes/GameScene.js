@@ -189,17 +189,14 @@ export class GameScene extends Phaser.Scene {
     const wood = 0xc39a63;
     const shade = 0x8a6438;
 
-    back.fillStyle(shade, 1).fillRect(left, QUEUE_Y - 30, right - left, 4); // rear rail
-    for (let x = left; x <= right; x += 18) back.fillStyle(shade, 1).fillRect(x - 3, QUEUE_Y - 38, 6, 14);
+    back.fillStyle(shade, 1).fillRect(left, QUEUE_Y - 30, right - left, 2); // rear rail
+    for (let x = left; x <= right; x += 24) back.fillStyle(shade, 1).fillRect(x - 1, QUEUE_Y - 36, 2, 10);
 
-    front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 14, right - left, 4); // front rail
-    front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 28, right - left, 4);
-    for (let x = left; x <= right; x += 18) {
-      front.fillStyle(wood, 1).fillRoundedRect(x - 4, QUEUE_Y + 8, 8, 30, 2);
-      front.lineStyle(1, shade, 1).strokeRoundedRect(x - 4, QUEUE_Y + 8, 8, 30, 2);
-    }
-    front.fillStyle(shade, 1).fillRoundedRect(left - 5, QUEUE_Y - 6, 10, 46, 3); // end posts
-    front.fillStyle(shade, 1).fillRoundedRect(right - 5, QUEUE_Y - 6, 10, 46, 3);
+    front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 18, right - left, 2); // front rail
+    front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 30, right - left, 2);
+    for (let x = left; x <= right; x += 24) front.fillStyle(wood, 1).fillRect(x - 1.5, QUEUE_Y + 12, 3, 26); // slim pickets
+    front.fillStyle(shade, 1).fillRoundedRect(left - 3, QUEUE_Y - 4, 6, 44, 2); // end posts
+    front.fillStyle(shade, 1).fillRoundedRect(right - 3, QUEUE_Y - 4, 6, 44, 2);
   }
 
   spawnPerson(person, index, fadeIn) {
@@ -215,11 +212,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   queueScale(index) {
-    return index < this.config.queueHeadSize ? PERSON_SCALE : PERSON_SCALE * 0.8;
+    return index < this.config.queueHeadSize ? PERSON_SCALE : PERSON_SCALE * 0.9;
   }
 
   queueAlpha(index) {
-    return index < this.config.queueHeadSize ? 1 : 0.75;
+    return 1;
   }
 
   styleQueueSprite(sprite, index) {

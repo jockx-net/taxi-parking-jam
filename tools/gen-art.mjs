@@ -88,7 +88,9 @@ function personSvg(color) {
   <circle cx="18" cy="70" r="9" fill="${skin}" stroke="${dark}" stroke-width="3"/>
   <circle cx="78" cy="70" r="9" fill="${skin}" stroke="${dark}" stroke-width="3"/>
   <circle cx="48" cy="34" r="27" fill="${skin}" stroke="${dark}" stroke-width="4"/>
-  <path d="M21 30 Q24 6 48 8 Q72 6 75 30 Q62 16 48 18 Q34 16 21 30 Z" fill="${dark}"/>
+  <path d="M23 26 Q23 3 48 3 Q73 3 73 26 Z" fill="${base}" stroke="${dark}" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="15" y="22" width="66" height="10" rx="5" fill="${base}" stroke="${dark}" stroke-width="4"/>
+  <path d="M27 20 Q48 12 69 20" fill="none" stroke="${dark}" stroke-width="3" opacity="0.45" stroke-linecap="round"/>
   <circle cx="38" cy="38" r="4" fill="#1d2230"/>
   <circle cx="58" cy="38" r="4" fill="#1d2230"/>
   <circle cx="39.5" cy="36.5" r="1.4" fill="#fff"/>
