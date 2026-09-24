@@ -121,39 +121,23 @@ export class GameScene extends Phaser.Scene {
     const pavement = this.add.graphics().setDepth(-7);
     pavement.fillStyle(0x858a94, 1).fillRoundedRect(left + ROAD_W / 2 + 4, top + ROAD_W / 2 + 4, ringW - ROAD_W - 8, ringH - ROAD_W - 8, 22);
 
-    // Two-way road paint: a dashed centre line, with direction arrows in the lane
-    // that traffic actually uses (the right-hand one).
+    // Two-way road paint: one dashed centre line that also follows the curves,
+    // and a stop line across the traffic lane where the ring meets the main road.
     const marks = this.add.graphics().setDepth(-5);
-    marks.lineStyle(3, 0xffffff, 0.35);
-    const dashed = (x1, y1, x2, y2) => {
-      const len = Math.hypot(x2 - x1, y2 - y1);
-      const ux = (x2 - x1) / len;
-      const uy = (y2 - y1) / len;
-      for (let d = 0; d < len; d += 34) {
-        const e = Math.min(d + 18, len);
-        marks.lineBetween(x1 + ux * d, y1 + uy * d, x1 + ux * e, y1 + uy * e);
+    marks.lineStyle(3, 0xffffff, 0.45);
+    const dashAlong = (path) => {
+      for (let d = 0; d < path.length - 1; d += 34) {
+        const a = path.poseAt(d);
+        const b = path.poseAt(Math.min(d + 18, path.length));
+        marks.lineBetween(a.x, a.y, b.x, b.y);
       }
     };
-    dashed(right - 60, bottom, left + 60, bottom);
-    dashed(left, bottom - 60, left, top + 60);
-    dashed(left + 60, top, right - 60, top);
-    dashed(right, top + 60, right, MAIN_Y - 40);
-    dashed(W, MAIN_Y, 90, MAIN_Y);
+    dashAlong(new RoadPath([{ x: W / 2, y: bottom }, { x: left, y: bottom }, { x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: W / 2, y: bottom }], 60));
+    dashAlong(new RoadPath([{ x: right, y: bottom - 60 }, { x: right, y: MAIN_Y }], 1));
+    dashAlong(new RoadPath([{ x: W, y: MAIN_Y }, { x: 0, y: MAIN_Y }], 1));
 
-    marks.fillStyle(0xf5c518, 0.85);
-    const arrow = (x, y, dir) => {
-      const [dx, dy] = { west: [-1, 0], east: [1, 0], north: [0, -1], south: [0, 1] }[dir];
-      marks.fillTriangle(x + dx * 11, y + dy * 11, x - dx * 7 - dy * 9, y - dy * 7 + dx * 9, x - dx * 7 + dy * 9, y - dy * 7 - dx * 9);
-    };
-    const c = this.laneC;
-    for (let x = right - 100; x > left + 70; x -= 130) arrow(x, c.bottom, "west");
-    for (let y = bottom - 100; y > top + 70; y -= 130) arrow(c.left, y, "north");
-    for (let x = left + 100; x < right - 70; x += 130) arrow(x, c.top, "east");
-    for (let y = top + 100; y < MAIN_Y - 100; y += 130) arrow(c.right, y, "south");
-    for (let x = W - 60; x > 110; x -= 130) arrow(x, this.mainLaneY, "west");
-
-    this.add.text(46, MAIN_Y, "EXIT", { ...TEXT, fontSize: "20px", fontStyle: "bold", color: "#f5c518" }).setOrigin(0.5).setDepth(-4);
-    marks.fillTriangle(12, MAIN_Y, 26, MAIN_Y - 9, 26, MAIN_Y + 9);
+    marks.fillStyle(0xffffff, 0.9);
+    marks.fillRect(right - ROAD_W / 2 + 3, MAIN_Y - ROAD_W / 2 - 22, ROAD_W / 2 - 6, 9); // stop line
   }
 
   buildHud() {

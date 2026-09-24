@@ -49,8 +49,9 @@ filled, and it leaves. Clear every taxi in the lot to win.
   really reached its bay (boarding people walk to the taxi only then).
 - Win or lose is announced only once all movement has finished.
 
-- The roads are painted as ordinary two-way streets (dashed centre line, a
-  direction arrow in each lane's traffic direction) and are wide enough that a
+- The roads are painted as ordinary two-way streets (a dashed centre line that
+  also follows the curves, and a stop line across the traffic lane where the
+  ring meets the main road; no arrows or text) and are wide enough that a
   taxi takes only about 55% of the width. Traffic keeps to the right: clockwise
   round the ring (the inner lane) and westbound in the northern lane of the main
   road, and a taxi turns across the empty lane to enter its bay.
