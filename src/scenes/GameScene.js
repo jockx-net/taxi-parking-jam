@@ -1,23 +1,23 @@
 import Phaser from "phaser";
 import { loadLevel } from "../game/LevelLoader.js";
 import { DIR_VECTORS } from "../game/Taxi.js";
-import { RoadPath, Traffic, Vehicle } from "../game/traffic.js";
+import { RoadPath, Traffic, Vehicle, circlesOverlap } from "../game/traffic.js";
 import { LEVELS } from "../data/levels/index.js";
 import { COLOR_HEX } from "../game/colors.js";
 import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
 import { markCleared } from "./progress.js";
 
 const W = 720;
-const GRID_SIZE = 520;
-const GRID_TOP = 180;
+const GRID_SIZE = 500;
+const GRID_TOP = 172;
 const ROAD_W = 56;
 const LANE_GAP = 44; // lot edge to the centre line of the ring road
-const MAIN_Y = 815; // centre line of the main road (flows west to the exit)
+const MAIN_Y = 848; // centre line of the main road (flows west to the exit)
 const BAY_W = 140;
-const BAY_H = 200;
-const BAY_Y = 952;
+const BAY_H = 190;
+const BAY_Y = 980;
 const SLOT_SPACING = 210;
-const QUEUE_Y = 1130;
+const QUEUE_Y = 1152;
 const QUEUE_SPACING = 56;
 const PERSON_SCALE = 0.5;
 const DIR_ANGLE = { right: 0, down: 90, left: 180, up: -90 };
@@ -172,7 +172,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(W / 2, 40, this.config.name, { ...TEXT, fontSize: "40px", fontStyle: "bold" }).setOrigin(0.5);
     this.taxisLeftText = this.add.text(W - 30, 40, "", { ...TEXT, fontSize: "26px" }).setOrigin(1, 0.5);
     this.add
-      .text(W / 2, 92, `longer taxi = more seats   |   ${this.config.slots} slots   |   head ${this.config.queueHeadSize}`, {
+      .text(W / 2, 80, `longer taxi = more seats   |   ${this.config.slots} slots   |   head ${this.config.queueHeadSize}`, {
         ...TEXT,
         fontSize: "22px",
         color: "#9aa4b8",
@@ -239,12 +239,12 @@ export class GameScene extends Phaser.Scene {
 
   buildHint() {
     this.add
-      .text(W / 2, 1236, "Tap a bright taxi: it drives round the one-way street to a slot.\nLonger taxis have more seats. People in the HEAD board\ntaxis of their color; a full taxi leaves by the exit.", {
+      .text(W / 2, 1246, "Tap a bright taxi: it drives round the one-way street to a slot.\nLonger taxis have more seats. People in the HEAD board\ntaxis of their color; a full taxi leaves by the exit.", {
         ...TEXT,
-        fontSize: "21px",
+        fontSize: "19px",
         align: "center",
         color: "#c9d3e6",
-        lineSpacing: 8,
+        lineSpacing: 4,
       })
       .setOrigin(0.5);
   }
@@ -349,6 +349,21 @@ export class GameScene extends Phaser.Scene {
     return { point: { x: right, y: from.y }, s: 2 * w + h + (from.y - top) };
   }
 
+  // Where a taxi must hold while its bay is still occupied: the last point on
+  // its route before its body would reach the turning circle of a taxi
+  // reversing out of *any* bay (a taxi waiting for a far bay must not sit in
+  // front of a nearer one). Only the final approach is checked: the ring road's
+  // far side passes close to the bays, but nobody should queue there.
+  gateFor(vehicle, slot) {
+    const zones = this.level.slots.map((_, i) => [{ x: this.slotCenter(i).x, y: MAIN_Y + 6, r: 110 }]);
+    const approach = vehicle.path.length - (BAY_Y - MAIN_Y) - (this.lane.right - this.slotCenter(slot).x) - 300;
+    for (let s = Math.max(0, approach); s < vehicle.path.length; s += 4) {
+      const body = vehicle.circlesAt(vehicle.path.poseAt(s), vehicle.scaleAt(vehicle.path, s));
+      if (zones.some((zone) => circlesOverlap(body, zone, 12))) return Math.max(0, s - 4);
+    }
+    return vehicle.path.length;
+  }
+
   startVehicle({ taxiId, slot }) {
     const taxi = this.level.grid.getTaxi(taxiId);
     const sprite = this.taxiSprites.get(taxiId).setDepth(30).clearTint().setAlpha(1);
@@ -368,9 +383,9 @@ export class GameScene extends Phaser.Scene {
       entryS: entry.s,
       mergeDist: Math.hypot(entry.point.x - from.x, entry.point.y - from.y),
       bayLegS: path.length - bayLeg - 30,
-      gateS: path.length - bayLeg - 200, // queue up well clear of a departing taxi's turning circle
       waitFor: this.lastInSlot[slot] ?? null,
     });
+    vehicle.gateS = this.gateFor(vehicle, slot);
     this.lastInSlot[slot] = vehicle;
     vehicle.arrived = new Promise((resolve) => {
       vehicle.onArrived = () => {
