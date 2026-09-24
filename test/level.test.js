@@ -5,107 +5,94 @@ import { Taxi } from "../src/game/Taxi.js";
 import { Queue } from "../src/game/Queue.js";
 import { Level } from "../src/game/Level.js";
 
-function setup({ taxis, initialColors, previewSize = 3, colors = ["red", "blue"], pickupBays = 2 }) {
-  const grid = new GridLot(3, 3, taxis);
-  const queue = new Queue({ previewSize, colors, initialColors });
-  return new Level({ grid, queue, pickupBays });
+function taxi(id, color, x, y, dir, capacity = 2) {
+  return new Taxi({ id, color, capacity, x, y, dir, length: 1 });
 }
 
-test("selectTaxi fails for a blocked taxi, succeeds once unblocked", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 2, x: 0, y: 0, exitDir: "right" });
-  const blocker = new Taxi({ id: "b", color: "blue", capacity: 2, x: 1, y: 0, exitDir: "up" });
-  const level = setup({ taxis: [t1, blocker], initialColors: ["red", "red", "red"] });
-
-  assert.equal(level.selectTaxi("t1"), false);
-  assert.equal(level.selectTaxi("b"), true);
-  assert.equal(level.bays[0], blocker); // front is 'red', doesn't match blocker's 'blue', so it just waits in the bay
-});
-
-test("selectTaxi fails once every bay is occupied", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 3, x: 0, y: 0, exitDir: "up" });
-  const t2 = new Taxi({ id: "t2", color: "blue", capacity: 3, x: 1, y: 0, exitDir: "up" });
-  const t3 = new Taxi({ id: "t3", color: "green", capacity: 3, x: 2, y: 0, exitDir: "up" });
-  const level = setup({
-    taxis: [t1, t2, t3],
-    initialColors: ["green", "green", "green"],
-    colors: ["red", "blue", "green"],
-    pickupBays: 2,
+function setup({ taxis, queueColors, slots = 2, headSize = 3, previewSize = queueColors.length }) {
+  const grid = new GridLot(4, 4, taxis);
+  const queue = new Queue({
+    previewSize,
+    headSize,
+    colorSource: () => [...new Set(taxis.map((t) => t.color))],
+    initialColors: queueColors,
   });
+  return new Level({ grid, queue, slots });
+}
 
-  assert.equal(level.selectTaxi("t1"), true);
-  assert.equal(level.selectTaxi("t2"), true);
-  assert.equal(level.selectTaxi("t3"), false); // no free bay left
-  assert.equal(level.hasFreeBay(), false);
+test("a blocked taxi cannot be selected, a free one can", () => {
+  const a = taxi("a", "red", 0, 0, "right");
+  const b = taxi("b", "blue", 2, 0, "up");
+  const level = setup({ taxis: [a, b], queueColors: ["green", "green", "green"] });
+  assert.equal(level.selectTaxi("a"), null);
+  assert.ok(level.selectTaxi("b"));
+  assert.equal(level.slots[0], b);
 });
 
-test("front-of-queue person auto-boards a matching bay taxi, cascading through multiple matches", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 2, x: 0, y: 0, exitDir: "up" });
-  const level = setup({ taxis: [t1], initialColors: ["red", "red", "blue"], previewSize: 3 });
-
-  level.selectTaxi("t1");
-  // both leading 'red' people should have auto-boarded in one call, filling and departing t1
-  assert.equal(t1.seatsFilled, 2);
-  assert.equal(t1.state, "departed");
-  assert.equal(level.status, "won"); // only taxi in the grid, now cleared
-  assert.equal(level.bays[0], null);
+test("selecting a taxi emits an enter event and fills the first empty slot", () => {
+  const a = taxi("a", "red", 0, 0, "up");
+  const level = setup({ taxis: [a], queueColors: ["blue", "blue", "blue"] });
+  assert.deepEqual(level.selectTaxi("a")[0], { type: "enter", taxiId: "a", slot: 0 });
 });
 
-test("a non-matching front person waits without failing the level", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 2, x: 0, y: 0, exitDir: "up" });
-  const level = setup({ taxis: [t1], initialColors: ["blue", "blue", "blue"], previewSize: 3 });
-
-  level.selectTaxi("t1");
-  assert.equal(t1.seatsFilled, 0);
-  assert.equal(level.status, "playing");
-  assert.equal(level.queue.front().color, "blue");
+test("anyone in the head boards, not just the first person", () => {
+  const a = taxi("a", "red", 0, 0, "up", 1);
+  const b = taxi("b", "blue", 1, 0, "up", 3);
+  const level = setup({ taxis: [a, b], queueColors: ["blue", "red", "blue"], headSize: 3 });
+  level.selectTaxi("b");
+  const events = level.selectTaxi("a");
+  // red (index 1) boards a even though blue is first; a departs after 1 seat
+  const boards = events.filter((e) => e.type === "board");
+  assert.equal(boards[0].color, "red");
+  assert.equal(boards[0].taxiId, "a");
+  assert.ok(events.some((e) => e.type === "depart" && e.taxiId === "a"));
 });
 
-test("recallTaxi frees a bay, returns the taxi to the grid, and preserves seats already filled", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 3, x: 0, y: 0, exitDir: "up" });
-  const t2 = new Taxi({ id: "t2", color: "blue", capacity: 3, x: 1, y: 0, exitDir: "left" });
-  const level = setup({
-    taxis: [t1, t2],
-    initialColors: ["red", "green", "green"],
-    colors: ["red", "blue", "green"],
-    pickupBays: 1,
-  });
-
-  level.selectTaxi("t1"); // boards the leading 'red', leaving t1 at 1/3
-  assert.equal(t1.seatsFilled, 1);
-  assert.equal(level.hasFreeBay(), false);
-
-  assert.equal(level.recallTaxi("t1"), true);
-  assert.equal(level.hasFreeBay(), true);
-  assert.equal(t1.state, "parked");
-  assert.equal(t1.seatsFilled, 1); // progress preserved
-
-  // t1 is back on the grid and blocks t2's leftward path again
-  assert.equal(level.grid.hasClearPath(t2), false);
+test("people outside the head cannot board", () => {
+  const a = taxi("a", "red", 0, 0, "up");
+  const b = taxi("b", "blue", 1, 0, "up");
+  const level = setup({ taxis: [a, b], queueColors: ["blue", "blue", "red"], headSize: 2 });
+  level.selectTaxi("a");
+  assert.equal(a.seatsFilled, 0); // the only red is at index 2, outside the head
 });
 
-test("recallTaxi returns false for a taxi that isn't currently in a bay", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 2, x: 0, y: 0, exitDir: "up" });
-  const level = setup({ taxis: [t1], initialColors: ["blue", "blue", "blue"] });
-  assert.equal(level.recallTaxi("t1"), false);
-});
-
-test("two bays let two different colors board independently from the front", () => {
-  const t1 = new Taxi({ id: "t1", color: "red", capacity: 1, x: 0, y: 0, exitDir: "up" });
-  const t2 = new Taxi({ id: "t2", color: "blue", capacity: 1, x: 1, y: 0, exitDir: "up" });
-  const level = setup({
-    taxis: [t1, t2],
-    initialColors: ["blue", "red"],
-    previewSize: 2,
-    pickupBays: 2,
-  });
-
-  level.selectTaxi("t1"); // t1 (red) can't take the front 'blue' person yet
-  assert.equal(t1.seatsFilled, 0);
-
-  level.selectTaxi("t2"); // t2 (blue) boards the front 'blue' immediately,
-  // which then exposes 'red' at the front for t1 to auto-board too.
-  assert.equal(t2.state, "departed");
-  assert.equal(t1.seatsFilled, 1);
-  assert.equal(t1.state, "departed");
+test("boarding cascades and reports seats, spawned people and departure", () => {
+  const a = taxi("a", "red", 0, 0, "up", 2);
+  const level = setup({ taxis: [a], queueColors: ["red", "red", "blue"], headSize: 3 });
+  const events = level.selectTaxi("a");
+  assert.deepEqual(events.map((e) => e.type), ["enter", "board", "board", "depart"]);
+  assert.equal(events[2].seats, 2);
+  assert.ok(events[1].spawned.id > 2);
   assert.equal(level.status, "won");
+  assert.equal(level.slots[0], null);
+});
+
+test("win requires every taxi to depart", () => {
+  const a = taxi("a", "red", 0, 0, "up", 1);
+  const b = taxi("b", "red", 1, 0, "up", 1);
+  const level = setup({ taxis: [a, b], queueColors: ["red", "red"], headSize: 2 });
+  level.selectTaxi("a");
+  assert.equal(level.status, "playing");
+  level.selectTaxi("b");
+  assert.equal(level.status, "won");
+});
+
+test("lose: all slots full and nobody in the head matches", () => {
+  const a = taxi("a", "red", 0, 0, "up");
+  const b = taxi("b", "blue", 1, 0, "up");
+  const c = taxi("c", "green", 2, 0, "up");
+  const level = setup({ taxis: [a, b, c], queueColors: ["green", "green", "green"], slots: 2, headSize: 3 });
+  level.selectTaxi("a");
+  assert.equal(level.status, "playing");
+  level.selectTaxi("b");
+  assert.equal(level.status, "lost");
+  assert.equal(level.selectTaxi("c"), null);
+});
+
+test("no loss while a slot is free and a taxi can still be sent", () => {
+  const a = taxi("a", "red", 0, 0, "up");
+  const b = taxi("b", "blue", 1, 0, "up");
+  const level = setup({ taxis: [a, b], queueColors: ["blue", "blue", "blue"], slots: 2, headSize: 3 });
+  level.selectTaxi("a");
+  assert.equal(level.status, "playing");
 });

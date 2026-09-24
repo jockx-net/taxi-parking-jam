@@ -1,17 +1,11 @@
-const DIR_VECTORS = {
-  up: { dx: 0, dy: -1 },
-  down: { dx: 0, dy: 1 },
-  left: { dx: -1, dy: 0 },
-  right: { dx: 1, dy: 0 },
-};
+import { DIR_VECTORS } from "./Taxi.js";
 
 function cellKey(x, y) {
   return `${x},${y}`;
 }
 
-// Grid model: tracks parked taxis on a width x height grid and computes,
-// for a given taxi, whether the straight-line path from its cell to the
-// grid edge (in its exitDir) is clear of other parked taxis.
+// The parking lot: a width x height grid of multi-cell taxis. A taxi is free
+// when every cell ahead of its front, up to the grid edge, is empty.
 export class GridLot {
   constructor(width, height, taxis) {
     this.width = width;
@@ -19,7 +13,16 @@ export class GridLot {
     this.taxis = new Map(taxis.map((t) => [t.id, t]));
     this.cellOccupancy = new Map();
     for (const taxi of taxis) {
-      this.cellOccupancy.set(cellKey(taxi.x, taxi.y), taxi.id);
+      for (const { x, y } of taxi.cells()) {
+        if (!this._inBounds(x, y)) {
+          throw new Error(`Taxi ${taxi.id} is out of bounds at ${x},${y}`);
+        }
+        const key = cellKey(x, y);
+        if (this.cellOccupancy.has(key)) {
+          throw new Error(`Taxi ${taxi.id} overlaps ${this.cellOccupancy.get(key)} at ${key}`);
+        }
+        this.cellOccupancy.set(key, taxi.id);
+      }
     }
   }
 
@@ -35,38 +38,37 @@ export class GridLot {
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
   }
 
-  hasClearPath(taxi) {
-    if (!DIR_VECTORS[taxi.exitDir]) {
-      throw new Error(`Unknown exitDir "${taxi.exitDir}" for taxi ${taxi.id}`);
-    }
-    const { dx, dy } = DIR_VECTORS[taxi.exitDir];
+  // The id of the first taxi ahead of `taxi`, or null if its way out is clear.
+  blockerOf(taxi) {
+    const { dx, dy } = DIR_VECTORS[taxi.dir];
     let x = taxi.x + dx;
     let y = taxi.y + dy;
     while (this._inBounds(x, y)) {
-      if (this.cellOccupancy.has(cellKey(x, y))) {
-        return false;
-      }
+      const occupant = this.cellOccupancy.get(cellKey(x, y));
+      if (occupant) return occupant;
       x += dx;
       y += dy;
     }
-    return true;
+    return null;
+  }
+
+  isFree(taxi) {
+    return this.blockerOf(taxi) === null;
   }
 
   removeFromGrid(taxi) {
-    this.cellOccupancy.delete(cellKey(taxi.x, taxi.y));
-  }
-
-  returnToGrid(taxi) {
-    this.cellOccupancy.set(cellKey(taxi.x, taxi.y), taxi.id);
+    for (const { x, y } of taxi.cells()) {
+      this.cellOccupancy.delete(cellKey(x, y));
+    }
   }
 
   isCleared() {
     return this.allTaxis().every((t) => t.state === "departed");
   }
 
-  getAvailableTaxiIds() {
+  freeTaxiIds() {
     return this.allTaxis()
-      .filter((t) => t.state === "parked" && this.hasClearPath(t))
+      .filter((t) => t.state === "parked" && this.isFree(t))
       .map((t) => t.id);
   }
 }

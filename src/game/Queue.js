@@ -1,22 +1,24 @@
-// Endless, randomly-colored queue of people, fully visible to the player as
-// a `previewSize`-long strip. Only the person at the front (index 0) is ever
-// eligible to board; removing it shifts the rest forward and appends a
-// freshly generated person at the tail, so the preview is always full.
+// Endless queue of colored people, fully visible as a `previewSize`-long
+// strip. The first `headSize` people are the head: any of them may board a
+// matching taxi. Removing someone shifts the rest forward and appends a new
+// person, drawn from `colorSource()` (the colors still wanted by the lot).
 export class Queue {
-  constructor({ previewSize, colors, rng = Math.random, initialColors = [] }) {
+  constructor({ previewSize, headSize, colorSource, rng = Math.random, initialColors = [] }) {
     this.previewSize = previewSize;
-    this.colors = colors;
+    this.headSize = Math.min(headSize, previewSize);
+    this.colorSource = colorSource;
     this.rng = rng;
     this._nextId = 0;
-    this.preview = [];
+    this.people = [];
     for (let i = 0; i < previewSize; i++) {
       const color = i < initialColors.length ? initialColors[i] : this._randomColor();
-      this.preview.push(this._makePerson(color));
+      this.people.push(this._makePerson(color));
     }
   }
 
   _randomColor() {
-    return this.colors[Math.floor(this.rng() * this.colors.length)];
+    const colors = this.colorSource();
+    return colors[Math.floor(this.rng() * colors.length)];
   }
 
   _makePerson(color) {
@@ -24,18 +26,19 @@ export class Queue {
   }
 
   peek() {
-    return this.preview.slice();
+    return this.people.slice();
   }
 
-  front() {
-    return this.preview[0];
+  head() {
+    return this.people.slice(0, this.headSize);
   }
 
-  // Removes the front person, shifts the rest forward, and appends a new
-  // random person at the tail so the preview stays full.
-  popFront() {
-    const [removed] = this.preview.splice(0, 1);
-    this.preview.push(this._makePerson(this._randomColor()));
-    return removed;
+  // Removes the person at `index`, shifts the rest forward, and appends a new
+  // person at the tail. Returns { removed, spawned }.
+  removeAt(index) {
+    const [removed] = this.people.splice(index, 1);
+    const spawned = this._makePerson(this._randomColor());
+    this.people.push(spawned);
+    return { removed, spawned };
   }
 }

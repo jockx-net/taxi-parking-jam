@@ -2,35 +2,39 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Queue } from "../src/game/Queue.js";
 
-test("preview starts full at previewSize, using initialColors where given", () => {
-  const q = new Queue({
-    previewSize: 4,
-    colors: ["red", "blue"],
-    initialColors: ["red", "blue"],
-    rng: () => 0, // always picks colors[0]
-  });
-  assert.deepEqual(
-    q.peek().map((p) => p.color),
-    ["red", "blue", "red", "red"]
-  );
+const colorSource = () => ["red", "blue"];
+
+test("preview is full, seeded by initialColors then colorSource", () => {
+  const q = new Queue({ previewSize: 4, headSize: 2, colorSource, initialColors: ["blue"], rng: () => 0 });
+  assert.deepEqual(q.peek().map((p) => p.color), ["blue", "red", "red", "red"]);
 });
 
-test("front returns the person at the head of the preview", () => {
-  const q = new Queue({ previewSize: 3, colors: ["red"], initialColors: ["red", "red", "red"] });
-  assert.equal(q.front().color, "red");
+test("head is the first headSize people", () => {
+  const q = new Queue({ previewSize: 5, headSize: 3, colorSource, initialColors: ["red", "blue", "red", "blue", "blue"] });
+  assert.deepEqual(q.head().map((p) => p.color), ["red", "blue", "red"]);
 });
 
-test("popFront removes the head, shifts the rest forward, and refills the tail", () => {
+test("removeAt takes anyone, shifts the rest forward and spawns at the tail", () => {
   const q = new Queue({
     previewSize: 3,
-    colors: ["red", "blue"],
+    headSize: 3,
+    colorSource,
     initialColors: ["red", "blue", "red"],
-    rng: () => 1 - 1e-9, // always picks last color -> 'blue'
+    rng: () => 0.99, // -> 'blue'
   });
-  const removed = q.popFront();
-  assert.equal(removed.color, "red");
-  assert.deepEqual(
-    q.peek().map((p) => p.color),
-    ["blue", "red", "blue"]
-  );
+  const { removed, spawned } = q.removeAt(1);
+  assert.equal(removed.color, "blue");
+  assert.equal(spawned.color, "blue");
+  assert.deepEqual(q.peek().map((p) => p.color), ["red", "red", "blue"]);
+  assert.equal(q.peek()[2].id, spawned.id);
+});
+
+test("new people only use colors offered by colorSource", () => {
+  const q = new Queue({ previewSize: 3, headSize: 3, colorSource: () => ["green"], initialColors: ["red", "red", "red"] });
+  assert.equal(q.removeAt(0).spawned.color, "green");
+});
+
+test("headSize is capped at previewSize", () => {
+  const q = new Queue({ previewSize: 2, headSize: 5, colorSource });
+  assert.equal(q.head().length, 2);
 });

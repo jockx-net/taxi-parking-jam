@@ -1,78 +1,86 @@
-// Orchestrates one playthrough of a level: the grid of parked taxis, the
-// people queue, a fixed number of pickup bays taxis load in simultaneously,
-// and win detection. Pure logic, no rendering — GameScene drives this and
-// reacts to the resulting state.
+// One playthrough of a level: the lot, the people queue, and N boarding slots.
+// Pure logic, no rendering. Player actions return an ordered list of events
+// that the scene animates:
+//   { type: "enter",  taxiId, slot }
+//   { type: "board",  taxiId, slot, personId, color, seats, spawned }
+//   { type: "depart", taxiId, slot }
+// where `spawned` is the new person appended to the queue tail by the board.
 //
-// Boarding is automatic and strictly FIFO: whenever the person at the front
-// of the queue matches the color of some taxi currently in a bay, they board
-// immediately (cascading through as many matches as are queued up). If the
-// front person matches no active bay taxi, the queue simply waits — there is
-// no fail state, but with fewer bays than colors it's possible to fill every
-// bay with colors the queue doesn't currently need. `recallTaxi` lets the
-// player send a bay taxi back to the grid (keeping any seats it already
-// filled) to free the bay for a better choice. All difficulty comes from
-// choosing which blocked-taxi order to clear and which colors to keep active
-// across a limited number of bays.
+// Boarding is automatic: any person in the queue head whose color matches a
+// slot taxi with a free seat boards it (cascading). A full taxi departs and
+// frees its slot. Win: lot cleared. Lose: nobody in the head can board and the
+// player cannot make progress (no empty slot, or no free taxi to send).
 export class Level {
-  constructor({ grid, queue, pickupBays }) {
+  constructor({ grid, queue, slots }) {
     this.grid = grid;
     this.queue = queue;
-    this.bays = new Array(pickupBays).fill(null);
-    this.status = "playing"; // 'playing' | 'won'
+    this.slots = new Array(slots).fill(null);
+    this.status = "playing"; // 'playing' | 'won' | 'lost'
   }
 
-  hasFreeBay() {
-    return this.bays.includes(null);
+  hasFreeSlot() {
+    return this.slots.includes(null);
   }
 
-  // Sends a parked taxi with a clear path into a free pickup bay.
+  // Ids of taxis the player may currently send into a slot.
+  selectableTaxiIds() {
+    if (this.status !== "playing" || !this.hasFreeSlot()) return [];
+    return this.grid.freeTaxiIds();
+  }
+
+  // Sends a free taxi into an empty slot. Returns events, or null if illegal.
   selectTaxi(taxiId) {
-    if (this.status !== "playing") return false;
-    const bayIndex = this.bays.indexOf(null);
-    if (bayIndex === -1) return false;
+    if (!this.selectableTaxiIds().includes(taxiId)) return null;
 
     const taxi = this.grid.getTaxi(taxiId);
-    if (!taxi || taxi.state !== "parked" || !this.grid.hasClearPath(taxi)) {
-      return false;
-    }
-
+    const slot = this.slots.indexOf(null);
     this.grid.removeFromGrid(taxi);
     taxi.state = "active";
-    this.bays[bayIndex] = taxi;
-    this._autoBoard();
-    return true;
+    this.slots[slot] = taxi;
+
+    const events = [{ type: "enter", taxiId, slot }];
+    this._autoBoard(events);
+    this._checkEnd();
+    return events;
   }
 
-  // Sends a bay taxi back to its grid slot, freeing the bay. Any seats it
-  // already filled are preserved for next time it's selected.
-  recallTaxi(taxiId) {
-    const bayIndex = this.bays.findIndex((t) => t && t.id === taxiId);
-    if (bayIndex === -1) return false;
-
-    const taxi = this.bays[bayIndex];
-    this.bays[bayIndex] = null;
-    taxi.state = "parked";
-    this.grid.returnToGrid(taxi);
-    return true;
+  _findBoarding() {
+    const head = this.queue.head();
+    for (let i = 0; i < head.length; i++) {
+      const slot = this.slots.findIndex((t) => t && t.color === head[i].color);
+      if (slot !== -1) return { index: i, slot };
+    }
+    return null;
   }
 
-  _autoBoard() {
-    while (this.status === "playing") {
-      const front = this.queue.front();
-      const bayIndex = this.bays.findIndex((t) => t && t.color === front.color);
-      if (bayIndex === -1) break; // front doesn't match any active taxi -> wait
-
-      this.queue.popFront();
-      const taxi = this.bays[bayIndex];
+  _autoBoard(events) {
+    let match;
+    while ((match = this._findBoarding())) {
+      const taxi = this.slots[match.slot];
+      const { removed, spawned } = this.queue.removeAt(match.index);
       taxi.seatsFilled += 1;
-
+      events.push({
+        type: "board",
+        taxiId: taxi.id,
+        slot: match.slot,
+        personId: removed.id,
+        color: removed.color,
+        seats: taxi.seatsFilled,
+        spawned,
+      });
       if (taxi.isFull) {
         taxi.state = "departed";
-        this.bays[bayIndex] = null;
-        if (this.grid.isCleared()) {
-          this.status = "won";
-        }
+        this.slots[match.slot] = null;
+        events.push({ type: "depart", taxiId: taxi.id, slot: match.slot });
       }
+    }
+  }
+
+  _checkEnd() {
+    if (this.grid.isCleared()) {
+      this.status = "won";
+    } else if (!this.hasFreeSlot() || this.grid.freeTaxiIds().length === 0) {
+      this.status = "lost";
     }
   }
 }
