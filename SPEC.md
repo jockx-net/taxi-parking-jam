@@ -83,7 +83,9 @@ filled, and it leaves. Clear every taxi in the lot to win.
 - When someone boards, everyone behind shifts forward, which may bring a new
   person into the head and reveal another at the end of the visible preview.
 - People who cannot board yet (everyone behind the head) stand inside a picket
-  fence; the fence shrinks as the queue shortens. There is no other head marker.
+  fence, which is a fixed pen (open at the head end) that stays even when the queue
+  empties. There is no other head marker. People never walk over the fence: they
+  go round the top of it to reach the far bays.
 - People are animated: they face the way they walk (down/up/left/right) with
   swinging arms and legs, and fidget while they wait (look around, scratch
   their head or belly, check their watch).

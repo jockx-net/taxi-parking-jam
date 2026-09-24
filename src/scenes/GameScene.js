@@ -185,7 +185,7 @@ export class GameScene extends Phaser.Scene {
     const back = this.fenceBack.clear();
     const front = this.fenceFront.clear();
     const first = this.config.queueHeadSize;
-    const last = this.displayQueue.length - 1;
+    const last = Math.min(this.config.queuePreviewSize, this.config.queue.length) - 1; // the pen is fixed; it does not shrink as people leave
     if (last < first) return;
     const left = this.queuePos(first).x - QUEUE_SPACING / 2 - 4;
     const right = this.queuePos(last).x + QUEUE_SPACING / 2 + 4;
@@ -198,8 +198,7 @@ export class GameScene extends Phaser.Scene {
     front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 18, right - left, 2); // front rail
     front.fillStyle(wood, 1).fillRect(left, QUEUE_Y + 30, right - left, 2);
     for (let x = left; x <= right; x += 24) front.fillStyle(wood, 1).fillRect(x - 1.5, QUEUE_Y + 12, 3, 26); // slim pickets
-    front.fillStyle(shade, 1).fillRoundedRect(left - 3, QUEUE_Y - 4, 6, 44, 2); // end posts
-    front.fillStyle(shade, 1).fillRoundedRect(right - 3, QUEUE_Y - 4, 6, 44, 2);
+    front.fillStyle(shade, 1).fillRoundedRect(right - 3, QUEUE_Y - 4, 6, 44, 2); // closed end; the left end is open, where people leave the pen for the head
   }
 
   spawnPerson(person, index, fadeIn) {
@@ -562,7 +561,8 @@ export class GameScene extends Phaser.Scene {
     if (!vehicle.doorOpening) vehicle.doorOpening = this.animateDoor(vehicle, 1);
 
     this.tweens.add({ targets: sprite, scaleX: PERSON_SCALE, scaleY: PERSON_SCALE, duration: 300 });
-    const laneY = Math.max(sprite.y - 36, doorway.y + 40);
+    const laneY = QUEUE_Y - 74; // walk above the fence, never over it
+    await this.walkTo(personId, sprite.x, laneY);
     await this.walkTo(personId, doorway.x, laneY);
     await this.walkTo(personId, doorway.x, doorway.y);
     await vehicle.doorOpening;
@@ -578,7 +578,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   relayoutQueue() {
-    this.drawFence();
     this.displayQueue.forEach((id, i) => {
       const sprite = this.personSprites.get(id);
       const view = this.personViews.get(id);
