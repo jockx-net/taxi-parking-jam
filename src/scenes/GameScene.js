@@ -19,7 +19,8 @@ const MAIN_Y = 860; // centre line of the main road (flows west to the exit)
 const BAY_W = 140;
 const BAY_H = 196;
 const BAY_Y = 1004;
-const SLOT_SPACING = 210;
+const SLOT_SPACING = 160;
+const BAYS_CENTRE_X = 320; // bays sit left of centre so taxis waiting at the stop line don't crowd the nearest bay's turning circle
 const QUEUE_Y = 1170;
 const QUEUE_SPACING = 56;
 const PERSON_SCALE = 0.5;
@@ -79,7 +80,7 @@ export class GameScene extends Phaser.Scene {
 
   slotCenter(i) {
     const n = this.level.slots.length;
-    return { x: W / 2 + (i - (n - 1) / 2) * SLOT_SPACING, y: BAY_Y };
+    return { x: BAYS_CENTRE_X + (i - (n - 1) / 2) * SLOT_SPACING, y: BAY_Y };
   }
 
   queuePos(i) {
@@ -354,11 +355,22 @@ export class GameScene extends Phaser.Scene {
   gateFor(vehicle, slot) {
     const zones = this.level.slots.map((_, i) => [{ x: this.slotCenter(i).x, y: this.mainLaneY, r: 125 }]);
     const approach = vehicle.path.length - (BAY_Y - this.mainLaneY) - (this.laneC.right - this.slotCenter(slot).x) - 300;
+    let gate = vehicle.path.length;
     for (let s = Math.max(0, approach); s < vehicle.path.length; s += 4) {
       const body = vehicle.circlesAt(vehicle.path.poseAt(s), vehicle.scaleAt(vehicle.path, s));
-      if (zones.some((zone) => circlesOverlap(body, zone, 12))) return Math.max(0, s - 4);
+      if (zones.some((zone) => circlesOverlap(body, zone, 12))) {
+        gate = Math.max(0, s - 4);
+        break;
+      }
     }
-    return vehicle.path.length;
+    // A taxi that has to wait for its bay stops with its nose at the stop line.
+    const edge = MAIN_Y - ROAD_W / 2;
+    for (let s = 0; s < Math.min(gate, vehicle.path.length); s += 4) {
+      const pose = vehicle.path.poseAt(s);
+      const { length } = vehicle.dims(vehicle.scaleAt(vehicle.path, s));
+      if (Math.abs(pose.heading - Math.PI / 2) < 0.3 && pose.y + length / 2 >= edge - 2) return s;
+    }
+    return gate;
   }
 
   // The rules hand out the lowest free slot the instant a taxi fills, but that

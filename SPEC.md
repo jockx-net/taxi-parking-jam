@@ -45,6 +45,9 @@ filled, and it leaves. Clear every taxi in the lot to win.
 - A taxi picks a bay when tapped, but while it is still on the final approach
   it switches to any bay that becomes free, so it never waits at the junction
   for one bay while another is empty.
+- A taxi that has to wait for its bay stops with its nose on the stop line at
+  the junction with the main road (the bays sit slightly left of centre so the
+  waiting taxis don't crowd the nearest bay's turning circle).
 - Boarding and departure are shown in rules order, each once its taxi has
   really reached its bay (boarding people walk to the taxi only then).
 - Win or lose is announced only once all movement has finished.
