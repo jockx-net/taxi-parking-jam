@@ -1,0 +1,31 @@
+{
+  "id": "level002",
+  "name": "Level 2",
+  "grid": {
+    "width": 2,
+    "height": 1
+  },
+  "colors": [
+    "red",
+    "blue"
+  ],
+  "taxiCapacity": 3,
+  "pickupBays": 2,
+  "queuePreviewSize": 8,
+  "taxis": [
+    {
+      "id": "t1",
+      "color": "red",
+      "x": 0,
+      "y": 0,
+      "exitDir": "up"
+    },
+    {
+      "id": "t2",
+      "color": "blue",
+      "x": 1,
+      "y": 0,
+      "exitDir": "up"
+    }
+  ]
+}

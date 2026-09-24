@@ -1,0 +1,60 @@
+{
+  "id": "level004",
+  "name": "Level 4",
+  "grid": {
+    "width": 3,
+    "height": 2
+  },
+  "colors": [
+    "red",
+    "blue",
+    "green"
+  ],
+  "taxiCapacity": 2,
+  "pickupBays": 2,
+  "queuePreviewSize": 8,
+  "taxis": [
+    {
+      "id": "t_0_0",
+      "color": "red",
+      "x": 0,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_0_1",
+      "color": "blue",
+      "x": 0,
+      "y": 1,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_1_0",
+      "color": "blue",
+      "x": 1,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_1_1",
+      "color": "green",
+      "x": 1,
+      "y": 1,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_2_0",
+      "color": "green",
+      "x": 2,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_2_1",
+      "color": "red",
+      "x": 2,
+      "y": 1,
+      "exitDir": "down"
+    }
+  ]
+}

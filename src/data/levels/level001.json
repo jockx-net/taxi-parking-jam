@@ -1,0 +1,23 @@
+{
+  "id": "level001",
+  "name": "Level 1",
+  "grid": {
+    "width": 1,
+    "height": 1
+  },
+  "colors": [
+    "red"
+  ],
+  "taxiCapacity": 3,
+  "pickupBays": 1,
+  "queuePreviewSize": 6,
+  "taxis": [
+    {
+      "id": "t1",
+      "color": "red",
+      "x": 0,
+      "y": 0,
+      "exitDir": "up"
+    }
+  ]
+}

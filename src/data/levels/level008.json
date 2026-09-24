@@ -1,0 +1,131 @@
+{
+  "id": "level008",
+  "name": "Level 8",
+  "grid": {
+    "width": 4,
+    "height": 4
+  },
+  "colors": [
+    "red",
+    "blue",
+    "green",
+    "yellow"
+  ],
+  "taxiCapacity": 3,
+  "pickupBays": 2,
+  "queuePreviewSize": 12,
+  "taxis": [
+    {
+      "id": "t_0_0",
+      "color": "red",
+      "x": 0,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_0_1",
+      "color": "blue",
+      "x": 0,
+      "y": 1,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_0_2",
+      "color": "green",
+      "x": 0,
+      "y": 2,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_0_3",
+      "color": "yellow",
+      "x": 0,
+      "y": 3,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_1_0",
+      "color": "blue",
+      "x": 1,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_1_1",
+      "color": "green",
+      "x": 1,
+      "y": 1,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_1_2",
+      "color": "yellow",
+      "x": 1,
+      "y": 2,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_1_3",
+      "color": "red",
+      "x": 1,
+      "y": 3,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_2_0",
+      "color": "green",
+      "x": 2,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_2_1",
+      "color": "yellow",
+      "x": 2,
+      "y": 1,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_2_2",
+      "color": "red",
+      "x": 2,
+      "y": 2,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_2_3",
+      "color": "blue",
+      "x": 2,
+      "y": 3,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_3_0",
+      "color": "yellow",
+      "x": 3,
+      "y": 0,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_3_1",
+      "color": "red",
+      "x": 3,
+      "y": 1,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_3_2",
+      "color": "blue",
+      "x": 3,
+      "y": 2,
+      "exitDir": "down"
+    },
+    {
+      "id": "t_3_3",
+      "color": "green",
+      "x": 3,
+      "y": 3,
+      "exitDir": "down"
+    }
+  ]
+}
