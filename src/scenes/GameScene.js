@@ -7,11 +7,18 @@ import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
 import { markCleared } from "./progress.js";
 
 const W = 720;
-const GRID_BOX = { top: 130, size: 600 };
-const SLOT_Y = 850;
-const SLOT_W = 200;
-const QUEUE_Y = 1050;
+const GRID_SIZE = 520;
+const GRID_TOP = 180;
+const ROAD_W = 56;
+const LANE_GAP = 44; // lot edge to the centre line of the ring road
+const MAIN_Y = 815; // centre line of the main road (flows west to the exit)
+const BAY_W = 140;
+const BAY_H = 200;
+const BAY_Y = 952;
+const SLOT_SPACING = 210;
+const QUEUE_Y = 1130;
 const QUEUE_SPACING = 56;
+const DRIVE_SPEED = 1.5; // pixels per millisecond
 const PERSON_SCALE = 0.5;
 const DIR_ANGLE = { right: 0, down: 90, left: 180, up: -90 };
 
@@ -36,10 +43,18 @@ export class GameScene extends Phaser.Scene {
     this.slotViews = [];
 
     const { grid } = this.config;
-    this.cell = Math.min(GRID_BOX.size / grid.width, GRID_BOX.size / grid.height);
+    this.cell = Math.min(GRID_SIZE / grid.width, GRID_SIZE / grid.height);
     this.origin = {
       x: W / 2 - (grid.width * this.cell) / 2,
-      y: GRID_BOX.top + (GRID_BOX.size - grid.height * this.cell) / 2,
+      y: GRID_TOP + (GRID_SIZE - grid.height * this.cell) / 2,
+    };
+    const lotW = grid.width * this.cell;
+    const lotH = grid.height * this.cell;
+    this.lane = {
+      left: this.origin.x - LANE_GAP,
+      right: this.origin.x + lotW + LANE_GAP,
+      top: this.origin.y - LANE_GAP,
+      bottom: this.origin.y + lotH + LANE_GAP,
     };
 
     this.drawBackdrop();
@@ -55,7 +70,7 @@ export class GameScene extends Phaser.Scene {
 
   slotCenter(i) {
     const n = this.level.slots.length;
-    return { x: W / 2 + (i - (n - 1) / 2) * (SLOT_W + 20), y: SLOT_Y };
+    return { x: W / 2 + (i - (n - 1) / 2) * SLOT_SPACING, y: BAY_Y };
   }
 
   queuePos(i) {
@@ -75,7 +90,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   slotScale(taxi) {
-    return Math.min(0.9, (SLOT_W - 20) / (taxi.length * CELL_PX));
+    return Math.min(0.6, (BAY_H - 30) / (taxi.length * CELL_PX));
   }
 
   // ---- static scenery -----------------------------------------------------
@@ -83,11 +98,59 @@ export class GameScene extends Phaser.Scene {
   drawBackdrop() {
     addBackground(this);
     const { grid } = this.config;
+    const { left, right, top, bottom } = this.lane;
     const w = grid.width * this.cell;
     const h = grid.height * this.cell;
-    const frame = this.add.graphics().setDepth(-5);
-    frame.fillStyle(0x20242f, 1).fillRoundedRect(this.origin.x - 14, this.origin.y - 14, w + 28, h + 28, 18);
-    frame.lineStyle(4, 0x4b5366, 1).strokeRoundedRect(this.origin.x - 14, this.origin.y - 14, w + 28, h + 28, 18);
+
+    const roads = this.add.graphics().setDepth(-6);
+    const curb = 0x5a6178;
+    const asphalt = 0x2b2f3b;
+    const ringW = right - left;
+    const ringH = bottom - top;
+    const extension = (color, pad) => roads.fillStyle(color, 1).fillRect(right - ROAD_W / 2 - pad, bottom - 40, ROAD_W + 2 * pad, MAIN_Y - bottom + 40);
+    const mainRoad = (color, pad) => roads.fillStyle(color, 1).fillRect(0, MAIN_Y - ROAD_W / 2 - pad, W, ROAD_W + 2 * pad);
+    roads.lineStyle(ROAD_W + 8, curb, 1).strokeRoundedRect(left, top, ringW, ringH, 40);
+    extension(curb, 4);
+    mainRoad(curb, 4);
+    roads.lineStyle(ROAD_W, asphalt, 1).strokeRoundedRect(left, top, ringW, ringH, 40);
+    extension(asphalt, 0);
+    mainRoad(asphalt, 0);
+
+    const marks = this.add.graphics().setDepth(-5);
+    marks.lineStyle(3, 0xffffff, 0.35);
+    const dashed = (x1, y1, x2, y2) => {
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      const ux = (x2 - x1) / len;
+      const uy = (y2 - y1) / len;
+      for (let d = 0; d < len; d += 34) {
+        const e = Math.min(d + 18, len);
+        marks.lineBetween(x1 + ux * d, y1 + uy * d, x1 + ux * e, y1 + uy * e);
+      }
+    };
+    dashed(right - 40, bottom, left + 40, bottom);
+    dashed(left, bottom - 40, left, top + 40);
+    dashed(left + 40, top, right - 40, top);
+    dashed(right, top + 40, right, MAIN_Y - 30);
+    dashed(W, MAIN_Y, 90, MAIN_Y);
+
+    marks.fillStyle(0xf5c518, 0.85);
+    const arrow = (x, y, dir) => {
+      const v = { west: [-1, 0], east: [1, 0], north: [0, -1], south: [0, 1] }[dir];
+      const [dx, dy] = v;
+      marks.fillTriangle(x + dx * 11, y + dy * 11, x - dx * 7 - dy * 9, y - dy * 7 + dx * 9, x - dx * 7 + dy * 9, y - dy * 7 - dx * 9);
+    };
+    for (let x = right - 90; x > left + 60; x -= 130) arrow(x, bottom, "west");
+    for (let y = bottom - 90; y > top + 60; y -= 130) arrow(left, y, "north");
+    for (let x = left + 90; x < right - 60; x += 130) arrow(x, top, "east");
+    for (let y = top + 90; y < MAIN_Y - 40; y += 130) arrow(right, y, "south");
+    for (let x = W - 40; x > 90; x -= 130) arrow(x, MAIN_Y, "west");
+
+    this.add.text(46, MAIN_Y, "EXIT", { ...TEXT, fontSize: "20px", fontStyle: "bold", color: "#f5c518" }).setOrigin(0.5).setDepth(-4);
+    marks.fillTriangle(12, MAIN_Y, 26, MAIN_Y - 9, 26, MAIN_Y + 9);
+
+    const lot = this.add.graphics().setDepth(-5);
+    lot.fillStyle(0x20242f, 1).fillRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14);
+    lot.lineStyle(3, 0x4b5366, 1).strokeRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14);
     const floor = this.add.tileSprite(this.origin.x, this.origin.y, w, h, "tile").setOrigin(0).setDepth(-4);
     floor.setTileScale(this.gridScale(), this.gridScale());
     const lines = this.add.graphics().setDepth(-3);
@@ -102,7 +165,7 @@ export class GameScene extends Phaser.Scene {
     this.add.text(W / 2, 40, this.config.name, { ...TEXT, fontSize: "40px", fontStyle: "bold" }).setOrigin(0.5);
     this.taxisLeftText = this.add.text(W - 30, 40, "", { ...TEXT, fontSize: "26px" }).setOrigin(1, 0.5);
     this.add
-      .text(W / 2, 92, `${this.config.taxiCapacity} seats per taxi   |   ${this.config.slots} slots   |   head ${this.config.queueHeadSize}`, {
+      .text(W / 2, 92, `longer taxi = more seats   |   ${this.config.slots} slots   |   head ${this.config.queueHeadSize}`, {
         ...TEXT,
         fontSize: "22px",
         color: "#9aa4b8",
@@ -113,8 +176,7 @@ export class GameScene extends Phaser.Scene {
   buildSlots() {
     this.level.slots.forEach((_, i) => {
       const { x, y } = this.slotCenter(i);
-      this.add.image(x, y, "bay").setDisplaySize(SLOT_W + 10, 128).setDepth(0);
-      this.add.text(x, y - 76, `SLOT ${i + 1}`, { ...TEXT, fontSize: "18px", color: "#f5c518" }).setOrigin(0.5);
+      this.add.image(x, y, "bay").setDisplaySize(BAY_W, BAY_H).setDepth(0);
       this.slotViews.push({ dots: [], taxiId: null });
     });
   }
@@ -170,9 +232,9 @@ export class GameScene extends Phaser.Scene {
 
   buildHint() {
     this.add
-      .text(W / 2, 1205, "Tap a bright taxi to send it to a slot.\nPeople in the HEAD board taxis of their color.\nFill every taxi to clear the lot!", {
+      .text(W / 2, 1236, "Tap a bright taxi: it drives round the one-way street to a slot.\nLonger taxis have more seats. People in the HEAD board\ntaxis of their color; a full taxi leaves by the exit.", {
         ...TEXT,
-        fontSize: "24px",
+        fontSize: "21px",
         align: "center",
         color: "#c9d3e6",
         lineSpacing: 8,
@@ -250,44 +312,75 @@ export class GameScene extends Phaser.Scene {
     this.checkEnd();
   }
 
+  // Waypoints from a taxi's parking cell around the one-way ring road (west
+  // along the bottom, north up the left, east along the top, south down the
+  // right), onto the main road and into its slot bay.
+  routeFor(taxi, slot) {
+    const { left, right, top, bottom } = this.lane;
+    const from = this.taxiCenter(taxi);
+    const slotX = this.slotCenter(slot).x;
+    const pts = [from];
+    if (taxi.dir === "down") pts.push({ x: from.x, y: bottom }, { x: left, y: bottom }, { x: left, y: top }, { x: right, y: top });
+    else if (taxi.dir === "left") pts.push({ x: left, y: from.y }, { x: left, y: top }, { x: right, y: top });
+    else if (taxi.dir === "up") pts.push({ x: from.x, y: top }, { x: right, y: top });
+    else pts.push({ x: right, y: from.y });
+    pts.push({ x: right, y: MAIN_Y }, { x: slotX, y: MAIN_Y }, { x: slotX, y: BAY_Y });
+    return pts;
+  }
+
+  // Smooth path through `points` with rounded corners.
+  roundedPath(points, radius) {
+    const pts = points.filter((p, i) => i === 0 || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > 0.5);
+    const path = new Phaser.Curves.Path(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const a = pts[i - 1];
+      const p = pts[i];
+      const b = pts[i + 1];
+      const dIn = Math.hypot(p.x - a.x, p.y - a.y);
+      const dOut = Math.hypot(b.x - p.x, b.y - p.y);
+      const r = Math.min(radius, dIn / 2, dOut / 2);
+      path.lineTo(p.x - ((p.x - a.x) / dIn) * r, p.y - ((p.y - a.y) / dIn) * r);
+      path.quadraticBezierTo(p.x + ((b.x - p.x) / dOut) * r, p.y + ((b.y - p.y) / dOut) * r, p.x, p.y);
+    }
+    path.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    return path;
+  }
+
+  // Drives `sprite` along `path`, facing the direction of travel.
+  driveAlong(sprite, path, fromScale, toScale) {
+    const progress = { t: 0 };
+    const point = new Phaser.Math.Vector2();
+    const tangent = new Phaser.Math.Vector2();
+    return this.tween({
+      targets: progress,
+      t: 1,
+      duration: Math.max(500, path.getLength() / DRIVE_SPEED),
+      ease: "Quad.easeInOut",
+      onUpdate: () => {
+        path.getPoint(progress.t, point);
+        path.getTangent(progress.t, tangent);
+        sprite.setPosition(point.x, point.y).setRotation(Math.atan2(tangent.y, tangent.x));
+        sprite.setScale(fromScale + (toScale - fromScale) * progress.t);
+      },
+    });
+  }
+
   async animEnter({ taxiId, slot }) {
     for (const p of this.pulses) p.remove();
     this.pulses = [];
     const taxi = this.level.grid.getTaxi(taxiId);
     const sprite = this.taxiSprites.get(taxiId).setDepth(30).clearTint().setAlpha(1);
-    const { dx, dy } = DIR_VECTORS[taxi.dir];
-    const { grid } = this.config;
-    const ahead = dx > 0 ? grid.width - 1 - taxi.x : dx < 0 ? taxi.x : dy > 0 ? grid.height - 1 - taxi.y : taxi.y;
-    const cells = ahead + taxi.length;
-    await this.tween({
-      targets: sprite,
-      x: sprite.x + dx * cells * this.cell,
-      y: sprite.y + dy * cells * this.cell,
-      scaleX: this.gridScale(),
-      scaleY: this.gridScale(),
-      duration: 100 + 55 * cells,
-      ease: "Quad.easeIn",
-    });
-    const target = this.slotCenter(slot);
-    const turn = Phaser.Math.Angle.ShortestBetween(sprite.angle, 0);
-    await this.tween({
-      targets: sprite,
-      x: target.x,
-      y: target.y,
-      angle: sprite.angle + turn,
-      scaleX: this.slotScale(taxi),
-      scaleY: this.slotScale(taxi),
-      duration: 340,
-      ease: "Cubic.easeOut",
-    });
-    sprite.setAngle(0).setDepth(12);
     sprite.disableInteractive();
+    const path = this.roundedPath(this.routeFor(taxi, slot), 30);
+    await this.driveAlong(sprite, path, this.gridScale(), this.slotScale(taxi));
+    sprite.setAngle(90).setDepth(12);
+
+    const target = this.slotCenter(slot);
     const view = this.slotViews[slot];
     view.taxiId = taxiId;
     view.dots = Array.from({ length: taxi.capacity }, (_, k) => {
-      const spacing = 22;
-      const x = target.x + (k - (taxi.capacity - 1) / 2) * spacing;
-      return this.add.circle(x, target.y + 46, 7, 0x1f232d).setStrokeStyle(2, 0xffffff, 0.9).setDepth(13);
+      const x = target.x + (k - (taxi.capacity - 1) / 2) * 20;
+      return this.add.circle(x, target.y + BAY_H / 2 - 16, 7, 0x1f232d).setStrokeStyle(2, 0xffffff, 0.9).setDepth(13);
     });
   }
 
@@ -331,11 +424,14 @@ export class GameScene extends Phaser.Scene {
   async animDepart({ taxiId, slot }) {
     const view = this.slotViews[slot];
     const sprite = this.taxiSprites.get(taxiId);
-    await this.tween({ targets: sprite, y: sprite.y - 150, alpha: 0, duration: 300, ease: "Quad.easeIn" });
-    sprite.destroy();
-    this.taxiSprites.delete(taxiId);
     view.dots.forEach((d) => d.destroy());
     view.dots = [];
+    sprite.setDepth(30);
+    await this.tween({ targets: sprite, y: MAIN_Y, duration: 320, ease: "Sine.easeInOut" }); // reverse out of the bay
+    this.tweens.add({ targets: sprite, angle: 180, duration: 300, ease: "Sine.easeInOut" });
+    await this.tween({ targets: sprite, x: -260, duration: Math.max(500, (sprite.x + 260) / DRIVE_SPEED), ease: "Quad.easeIn" });
+    sprite.destroy();
+    this.taxiSprites.delete(taxiId);
     view.taxiId = null;
   }
 

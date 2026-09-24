@@ -5,10 +5,16 @@ export const DIR_VECTORS = {
   right: { dx: 1, dy: 0 },
 };
 
+// Bigger taxis always seat more people: 1 cell -> 2 seats, 2 -> 3, 3 -> 4.
+export function seatsForLength(length) {
+  return length + 1;
+}
+
 // A taxi occupies `length` consecutive cells. (x, y) is its front cell; the
-// body extends backwards, opposite to the facing direction `dir`.
+// body extends backwards, opposite to the facing direction `dir`. Its seat
+// count follows its length unless a test overrides `capacity`.
 export class Taxi {
-  constructor({ id, color, capacity, x, y, dir, length = 2 }) {
+  constructor({ id, color, x, y, dir, length = 2, capacity = seatsForLength(length) }) {
     if (!DIR_VECTORS[dir]) throw new Error(`Unknown dir "${dir}" for taxi ${id}`);
     this.id = id;
     this.color = color;

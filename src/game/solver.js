@@ -11,7 +11,7 @@ export function isLotClearable(config) {
 // Number of "waves" needed to clear the lot when every free taxi leaves at
 // once: a rough measure of how tangled it is (Infinity if it can't be cleared).
 export function unjamDepth(config) {
-  const taxis = config.taxis.map((t) => new Taxi({ ...t, capacity: config.taxiCapacity }));
+  const taxis = config.taxis.map((t) => new Taxi(t));
   const grid = new GridLot(config.grid.width, config.grid.height, taxis);
   let depth = 0;
   for (;;) {

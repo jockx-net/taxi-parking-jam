@@ -10,7 +10,6 @@ export function loadLevel(config) {
       new Taxi({
         id: t.id,
         color: t.color,
-        capacity: config.taxiCapacity,
         x: t.x,
         y: t.y,
         dir: t.dir,

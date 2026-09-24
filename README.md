@@ -33,14 +33,15 @@ npm run build
   "id": "level001", "name": "Level 1", "seed": 1299,
   "grid": { "width": 4, "height": 4 },
   "colors": ["red", "blue"],
-  "taxiCapacity": 2, "slots": 3,
+  "slots": 3,
   "queueHeadSize": 5, "queuePreviewSize": 11,
   "taxis": [{ "id": "t1", "color": "red", "x": 2, "y": 3, "dir": "right", "length": 3 }],
   "queue": ["red", "blue", "..."]
 }
 ```
 
-A taxi's `x`/`y` is its front cell; its body extends backwards from `dir`. The
-`queue` holds exactly one person per seat, so the game is a deterministic
+A taxi's `x`/`y` is its front cell; its body extends backwards from `dir`. Seats
+follow length (`seatsForLength`: length + 1). The `queue` holds exactly one
+person per seat, so the game is a deterministic
 perfect-information puzzle. Difficulty knobs: `slots`, `queueHeadSize`, grid
-size, taxi count, colors and `taxiCapacity`.
+size, taxi count and colors.

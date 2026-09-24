@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140" viewBox="0 0 220 140">
-  <rect x="4" y="4" width="212" height="132" rx="16" fill="#343a49" stroke="#f5c518" stroke-width="5" stroke-dasharray="22 12"/>
-  <text x="110" y="82" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="60" fill="#f5c518" opacity="0.18">P</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="220" viewBox="0 0 150 220">
+  <rect x="4" y="4" width="142" height="212" rx="16" fill="#343a49"/>
+  <path d="M4 20 V4 H146 V20 M4 200 V216 H146 V200" fill="none"/>
+  <rect x="4" y="4" width="142" height="212" rx="16" fill="none" stroke="#f5c518" stroke-width="5" stroke-dasharray="22 12"/>
+  <text x="75" y="128" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="72" fill="#f5c518" opacity="0.16">P</text>
 </svg>

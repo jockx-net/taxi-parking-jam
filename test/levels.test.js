@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { loadLevel } from "../src/game/LevelLoader.js";
+import { seatsForLength } from "../src/game/Taxi.js";
 import { isLotClearable, solve } from "../src/game/solver.js";
 
 const dir = new URL("../src/data/levels/", import.meta.url);
@@ -17,7 +18,7 @@ test("there are at least 20 levels", () => {
 for (const config of configs) {
   test(`${config.name}: valid lot, exact queue, clearable and winnable`, () => {
     const level = loadLevel(config); // throws on overlap / out of bounds
-    const seats = config.taxis.length * config.taxiCapacity;
+    const seats = config.taxis.reduce((sum, t) => sum + seatsForLength(t.length), 0);
     assert.equal(config.queue.length, seats);
     assert.ok(config.taxis.every((t) => config.colors.includes(t.color)));
     assert.ok(isLotClearable(config));

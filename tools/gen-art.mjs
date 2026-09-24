@@ -28,42 +28,52 @@ function taxiSvg(color, length) {
   const base = COLORS[color];
   const dark = shade(base, -0.35);
   const light = shade(base, 0.25);
+  const hoodColor = shade(base, 0.12);
   const W = length * CELL;
   const H = CELL;
-  const cabinX = 34;
-  const cabinW = W - 34 - 40;
+  const hoodLen = 46 + 10 * (length - 1); // long bonnet: the obvious front
+  const trunkLen = 14;
+  const cabinStart = 8 + trunkLen;
+  const cabinEnd = W - 8 - hoodLen;
+  const cabinW = cabinEnd - cabinStart;
+  const hoodStart = cabinEnd;
   const checkers = [];
-  const squares = Math.floor((W - 44) / 14);
+  const squares = Math.floor((cabinW - 20) / 12);
   for (let i = 0; i < squares; i++) {
-    const fill = i % 2 ? "#ffffff" : "#20232b";
-    checkers.push(`<rect x="${22 + i * 14}" y="20" width="14" height="7" fill="${fill}"/>`);
-    checkers.push(`<rect x="${22 + i * 14}" y="101" width="14" height="7" fill="${i % 2 ? "#20232b" : "#ffffff"}"/>`);
+    const x = cabinStart + 10 + i * 12;
+    checkers.push(`<rect x="${x}" y="17" width="12" height="6" fill="${i % 2 ? "#ffffff" : "#20232b"}"/>`);
+    checkers.push(`<rect x="${x}" y="105" width="12" height="6" fill="${i % 2 ? "#20232b" : "#ffffff"}"/>`);
   }
   const sideWindows = [];
+  const winArea = cabinW - 40;
   for (let i = 0; i < length; i++) {
-    const x = cabinX + 6 + (i * cabinW) / length;
-    sideWindows.push(`<rect x="${x}" y="40" width="${cabinW / length - 12}" height="48" rx="8" fill="#243044" stroke="#0d1420" stroke-width="2"/>`);
+    const x = cabinStart + 20 + (i * winArea) / length;
+    sideWindows.push(`<rect x="${x}" y="42" width="${winArea / length - 6}" height="44" rx="7" fill="#243044" stroke="#0d1420" stroke-width="2"/>`);
   }
+  const chevronX = hoodStart + 8 + (hoodLen - 46) * 0.4;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <ellipse cx="${W / 2}" cy="${H / 2 + 8}" rx="${W / 2 - 6}" ry="46" fill="#000" opacity="0.28"/>
-  <rect x="${W - 46}" y="6" width="20" height="14" rx="4" fill="#15171c"/>
-  <rect x="${W - 46}" y="108" width="20" height="14" rx="4" fill="#15171c"/>
-  <rect x="26" y="6" width="20" height="14" rx="4" fill="#15171c"/>
-  <rect x="26" y="108" width="20" height="14" rx="4" fill="#15171c"/>
-  <rect x="8" y="14" width="${W - 16}" height="100" rx="26" fill="${base}" stroke="${dark}" stroke-width="5"/>
-  <rect x="14" y="20" width="${W - 28}" height="88" rx="22" fill="none" stroke="${light}" stroke-width="3" opacity="0.7"/>
+  <ellipse cx="${W / 2}" cy="${H / 2 + 8}" rx="${W / 2 - 4}" ry="48" fill="#000" opacity="0.28"/>
+  <rect x="${cabinStart - 4}" y="5" width="22" height="14" rx="4" fill="#15171c"/>
+  <rect x="${cabinStart - 4}" y="109" width="22" height="14" rx="4" fill="#15171c"/>
+  <rect x="${hoodStart + 8}" y="5" width="22" height="14" rx="4" fill="#15171c"/>
+  <rect x="${hoodStart + 8}" y="109" width="22" height="14" rx="4" fill="#15171c"/>
+  <rect x="8" y="14" width="${W - 16}" height="100" rx="24" fill="${base}" stroke="${dark}" stroke-width="5"/>
+  <rect x="${hoodStart - 2}" y="16" width="${hoodLen - 4}" height="96" rx="22" fill="${hoodColor}" stroke="${dark}" stroke-width="3"/>
+  <path d="M${hoodStart + 8} 40 Q${hoodStart + hoodLen * 0.5} 34 ${W - 22} 42 M${hoodStart + 8} 88 Q${hoodStart + hoodLen * 0.5} 94 ${W - 22} 86" fill="none" stroke="${dark}" stroke-width="3" opacity="0.55" stroke-linecap="round"/>
+  <path d="M${chevronX} 52 L${chevronX + 12} 64 L${chevronX} 76 M${chevronX + 13} 52 L${chevronX + 25} 64 L${chevronX + 13} 76" fill="none" stroke="${dark}" stroke-width="5" opacity="0.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="${W - 18}" y="44" width="9" height="40" rx="4" fill="#15171c"/>
+  <circle cx="${W - 20}" cy="30" r="9" fill="#fff6a8" stroke="#c9a400" stroke-width="2.5"/>
+  <circle cx="${W - 20}" cy="98" r="9" fill="#fff6a8" stroke="#c9a400" stroke-width="2.5"/>
   ${checkers.join("\n  ")}
-  <rect x="${cabinX}" y="34" width="${cabinW}" height="60" rx="16" fill="${light}" stroke="${dark}" stroke-width="3"/>
+  <rect x="${cabinStart}" y="30" width="${cabinW}" height="68" rx="16" fill="${light}" stroke="${dark}" stroke-width="3"/>
   ${sideWindows.join("\n  ")}
-  <path d="M${W - 42} 34 L${W - 22} 42 Q${W - 16} 64 ${W - 22} 86 L${W - 42} 94 Z" fill="#33517a" stroke="#0d1420" stroke-width="3"/>
-  <path d="M${W - 42} 38 L${W - 30} 44 L${W - 30} 58 L${W - 42} 52 Z" fill="#ffffff" opacity="0.35"/>
-  <path d="M30 40 L18 46 Q13 64 18 82 L30 88 Z" fill="#243044" stroke="#0d1420" stroke-width="3"/>
-  <rect x="${cabinX + cabinW / 2 - 14}" y="52" width="28" height="24" rx="6" fill="#fffbe0" stroke="${dark}" stroke-width="2"/>
-  <rect x="${cabinX + cabinW / 2 - 8}" y="60" width="16" height="8" rx="2" fill="${dark}" opacity="0.8"/>
-  <circle cx="${W - 10}" cy="36" r="8" fill="#fff6a8" stroke="#c9a400" stroke-width="2"/>
-  <circle cx="${W - 10}" cy="92" r="8" fill="#fff6a8" stroke="#c9a400" stroke-width="2"/>
-  <rect x="6" y="30" width="7" height="14" rx="3" fill="#ff5d5d"/>
-  <rect x="6" y="84" width="7" height="14" rx="3" fill="#ff5d5d"/>
+  <path d="M${cabinEnd - 26} 34 L${cabinEnd - 6} 44 Q${cabinEnd} 64 ${cabinEnd - 6} 84 L${cabinEnd - 26} 94 Z" fill="#33517a" stroke="#0d1420" stroke-width="3"/>
+  <path d="M${cabinEnd - 22} 39 L${cabinEnd - 12} 45 L${cabinEnd - 12} 58 L${cabinEnd - 22} 52 Z" fill="#ffffff" opacity="0.35"/>
+  <path d="M${cabinStart + 16} 40 L${cabinStart + 4} 47 Q${cabinStart} 64 ${cabinStart + 4} 81 L${cabinStart + 16} 88 Z" fill="#243044" stroke="#0d1420" stroke-width="3"/>
+  <rect x="${cabinStart + cabinW / 2 - 13}" y="52" width="26" height="24" rx="6" fill="#fffbe0" stroke="${dark}" stroke-width="2"/>
+  <rect x="${cabinStart + cabinW / 2 - 7}" y="60" width="14" height="8" rx="2" fill="${dark}" opacity="0.8"/>
+  <rect x="9" y="28" width="7" height="16" rx="3" fill="#ff4d4d"/>
+  <rect x="9" y="84" width="7" height="16" rx="3" fill="#ff4d4d"/>
 </svg>
 `;
 }
@@ -105,9 +115,11 @@ const tile = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" v
 </svg>
 `;
 
-const bay = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140" viewBox="0 0 220 140">
-  <rect x="4" y="4" width="212" height="132" rx="16" fill="#343a49" stroke="#f5c518" stroke-width="5" stroke-dasharray="22 12"/>
-  <text x="110" y="82" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="60" fill="#f5c518" opacity="0.18">P</text>
+const bay = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="220" viewBox="0 0 150 220">
+  <rect x="4" y="4" width="142" height="212" rx="16" fill="#343a49"/>
+  <path d="M4 20 V4 H146 V20 M4 200 V216 H146 V200" fill="none"/>
+  <rect x="4" y="4" width="142" height="212" rx="16" fill="none" stroke="#f5c518" stroke-width="5" stroke-dasharray="22 12"/>
+  <text x="75" y="128" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="72" fill="#f5c518" opacity="0.16">P</text>
 </svg>
 `;
 

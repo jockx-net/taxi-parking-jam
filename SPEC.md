@@ -20,13 +20,28 @@ filled, and it leaves. Clear every taxi in the lot to win.
   dependency mazes the player must untangle by choosing the order.
 - Every shipped level must be fully clearable (verified by a test).
 
+## The streets
+
+- The lot is surrounded by a **one-way ring road**. Its flow starts at the
+  bottom-right corner heading west along the bottom, then north up the left
+  side, east along the top, and south down the right side, ending at the **main
+  road** that runs below the lot.
+- A taxi leaving the lot enters the ring in the direction it faces and drives
+  the rest of the loop (a taxi facing down does nearly a full lap, one facing
+  right joins the last stretch directly).
+- The boarding slots are bays along the main road, which flows west to the
+  map **exit**. A taxi drives along the main road, turns into its bay nose-in,
+  and once full reverses out and leaves west along the main road.
+
 ## Boarding slots
 
 - The level defines N slots. Tapping a free taxi sends it into an empty slot.
   If no slot is empty, taps are ignored.
 - A taxi stays in its slot until all its seats are filled, then departs and
   frees the slot. There is no recall / undo: the choice is final.
-- Taxis have a single color and a fixed seat capacity per level.
+- Taxis have a single color. **Seats follow size:** a taxi's seat count is
+  its length plus one (1 cell = 2 seats, 2 = 3, 3 = 4), so larger taxis always
+  have more seats.
 
 ## The queue
 
@@ -53,14 +68,15 @@ filled, and it leaves. Clear every taxi in the lot to win.
 
 - `slots` — number of boarding slots (fewer = harder).
 - `queueHeadSize` — how many people at the front can board (fewer = harder).
-- Grid size, number of taxis, number of colors, taxi lengths/directions,
-  `taxiCapacity`, and `queuePreviewSize` (visibility only).
+- Grid size, number of taxis, number of colors, taxi lengths/directions and
+  `queuePreviewSize` (visibility only).
 
 ## Presentation
 
 - Portrait 720x1280 canvas, FIT-scaled and centered.
-- Stylized 2D cartoon art: top-down taxis per color and length, people
-  sprites, a parking-lot backdrop with slot bays. Delivered after mechanics.
+- Stylized 2D cartoon art: top-down taxis per color and length with a long
+  bonnet (grille, headlights, chevrons) so the front is unmistakable, people
+  sprites, ring/main road, slot bays.
 
 ## Out of scope for the MVP
 

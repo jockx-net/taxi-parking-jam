@@ -1,13 +1,20 @@
-// Generates src/data/levels/*.json: seeded, jammed, clearable lots with a fixed
+// Generates src/data/levels/*.json (levels are staged one file at a time in
+// tools/.staging so runs can be split and resumed): seeded, jammed, clearable lots with a fixed
 // visible queue, verified winnable by the solver and banded by how often a
 // random player wins (easy levels high, hard levels low).
+// Usage: node tools/gen-levels.mjs [--range 1-10] [--offset N] [--assemble]
+// (--offset shifts the seed search so extra workers can race on a hard level)
 // Usage: node tools/gen-levels.mjs
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { seatsForLength } from "../src/game/Taxi.js";
 import { isLotClearable, randomWinRate, solve, unjamDepth } from "../src/game/solver.js";
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), "../src/data/levels");
+const SEED_OFFSET = process.argv.includes("--offset") ? Number(process.argv[process.argv.indexOf("--offset") + 1]) : 0;
+const HERE = dirname(fileURLToPath(import.meta.url));
+const OUT = join(HERE, "../src/data/levels");
+const STAGING = join(HERE, ".staging");
 const PALETTE = ["red", "blue", "green", "yellow", "purple", "orange"];
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
@@ -22,28 +29,28 @@ function mulberry32(seed) {
   };
 }
 
-// [size, taxis, colors, capacity, slots, head, minDepth]
+// [size, taxis, colors, slots, head, minDepth]
 const TABLE = [
-  [4, 3, 2, 2, 3, 5, 1],
-  [4, 5, 2, 2, 3, 5, 2],
-  [5, 6, 3, 2, 3, 5, 2],
-  [5, 8, 3, 2, 3, 4, 3],
-  [5, 9, 3, 3, 3, 4, 3],
-  [6, 10, 3, 2, 3, 4, 3],
-  [6, 12, 4, 2, 3, 4, 4],
-  [6, 13, 4, 3, 3, 3, 4],
-  [6, 14, 4, 2, 2, 4, 4],
-  [7, 15, 4, 2, 3, 4, 5],
-  [7, 17, 5, 2, 3, 3, 5],
-  [7, 18, 5, 3, 3, 3, 5],
-  [7, 18, 5, 2, 2, 3, 5],
-  [8, 20, 5, 2, 3, 3, 6],
-  [8, 22, 5, 3, 3, 3, 6],
-  [8, 22, 6, 2, 2, 3, 6],
-  [8, 24, 6, 2, 3, 3, 7],
-  [8, 26, 6, 3, 3, 3, 7],
-  [8, 26, 6, 2, 2, 3, 8],
-  [8, 28, 6, 2, 3, 2, 8],
+  [4, 3, 2, 3, 5, 1],
+  [4, 5, 2, 3, 5, 2],
+  [5, 6, 3, 3, 5, 2],
+  [5, 8, 3, 3, 4, 3],
+  [5, 9, 3, 3, 4, 3],
+  [6, 10, 3, 3, 4, 3],
+  [6, 12, 4, 3, 4, 4],
+  [6, 13, 4, 3, 3, 4],
+  [6, 14, 4, 2, 4, 4],
+  [7, 15, 4, 3, 4, 5],
+  [7, 17, 5, 3, 3, 5],
+  [7, 18, 5, 3, 3, 5],
+  [7, 18, 5, 2, 3, 5],
+  [8, 20, 5, 3, 3, 6],
+  [8, 22, 5, 3, 3, 6],
+  [8, 22, 6, 3, 3, 6],
+  [8, 24, 6, 3, 3, 7],
+  [8, 26, 6, 3, 3, 7],
+  [8, 26, 6, 3, 2, 8],
+  [8, 28, 6, 3, 3, 8],
 ];
 
 function tryLayout(size, count, colorCount, rng) {
@@ -70,8 +77,6 @@ function tryLayout(size, count, colorCount, rng) {
   return taxis.map((t, i) => ({ id: `t${i + 1}`, color: order[i], ...t }));
 }
 
-for (const f of readdirSync(OUT)) if (f.startsWith("level")) rmSync(join(OUT, f));
-mkdirSync(OUT, { recursive: true });
 
 function shuffle(items, rng) {
   const a = [...items];
@@ -82,12 +87,12 @@ function shuffle(items, rng) {
   return a;
 }
 
-const levels = TABLE.map(([size, count, colorCount, capacity, slots, head, minDepth], i) => {
+function generate([size, count, colorCount, slots, head, minDepth], i) {
   const hi = Math.max(0.12, 0.95 - 0.043 * i);
   const lo = Math.max(0, hi - 0.22);
   let widen = 0;
-  for (let seed = 1000 * (i + 1); ; seed++) {
-    if ((seed - 1000 * (i + 1)) % 300 === 299) widen += 0.05;
+  for (let seed = 1000 * (i + 1) + SEED_OFFSET; ; seed++) {
+    if ((seed - 1000 * (i + 1) - SEED_OFFSET) % 300 === 299) widen += 0.05;
     const rng = mulberry32(seed);
     const taxis = tryLayout(size, count, colorCount, rng);
     if (!taxis) continue;
@@ -97,7 +102,6 @@ const levels = TABLE.map(([size, count, colorCount, capacity, slots, head, minDe
       seed,
       grid: { width: size, height: size },
       colors: PALETTE.slice(0, colorCount),
-      taxiCapacity: capacity,
       slots,
       queueHeadSize: head,
       queuePreviewSize: head + 6,
@@ -105,7 +109,7 @@ const levels = TABLE.map(([size, count, colorCount, capacity, slots, head, minDe
       queue: [],
     };
     if (!isLotClearable(level) || unjamDepth(level) < minDepth) continue;
-    const seats = taxis.flatMap((t) => Array(capacity).fill(t.color));
+    const seats = taxis.flatMap((t) => Array(seatsForLength(t.length)).fill(t.color));
     level.queue = shuffle(seats, rng);
     const rate = randomWinRate(level, 300, rng);
     if (rate < lo - widen || rate > hi + widen) continue;
@@ -114,20 +118,38 @@ const levels = TABLE.map(([size, count, colorCount, capacity, slots, head, minDe
     console.error(`${level.name}: seed ${seed}, random-win ${level.randomWinRate}`);
     return level;
   }
-});
+}
 
-for (const level of levels) writeFileSync(join(OUT, `${level.id}.json`), JSON.stringify(level) + "\n");
-const pad = (i) => String(i + 1).padStart(3, "0");
-writeFileSync(
-  join(OUT, "index.js"),
-  [
-    ...levels.map((_, i) => `import level${pad(i)} from "./level${pad(i)}.json";`),
-    "",
-    "export const LEVELS = [",
-    ...levels.map((_, i) => `  level${pad(i)},`),
-    "];",
-    "",
-  ].join("\n")
-);
-console.log(`Wrote ${levels.length} levels`);
-for (const l of levels) console.log(l.name.padEnd(9), "depth", unjamDepth(l), "random-win", l.randomWinRate);
+const args = process.argv.slice(2);
+const rangeArg = args[args.indexOf("--range") + 1];
+const [from, to] = args.includes("--range") ? rangeArg.split("-").map(Number) : [1, TABLE.length];
+
+mkdirSync(STAGING, { recursive: true });
+if (!args.includes("--assemble") || args.includes("--range")) {
+  for (let n = from; n <= to; n++) {
+    const file = join(STAGING, `level${String(n).padStart(3, "0")}.json`);
+    if (existsSync(file)) continue;
+    writeFileSync(file, JSON.stringify(generate(TABLE[n - 1], n - 1)) + "\n");
+  }
+}
+
+if (!args.includes("--range") || args.includes("--assemble")) {
+  const levels = TABLE.map((_, i) => JSON.parse(readFileSync(join(STAGING, `level${String(i + 1).padStart(3, "0")}.json`), "utf8")));
+  mkdirSync(OUT, { recursive: true });
+  for (const f of readdirSync(OUT)) if (f.startsWith("level")) rmSync(join(OUT, f));
+  for (const level of levels) writeFileSync(join(OUT, `${level.id}.json`), JSON.stringify(level) + "\n");
+  const pad = (i) => String(i + 1).padStart(3, "0");
+  writeFileSync(
+    join(OUT, "index.js"),
+    [
+      ...levels.map((_, i) => `import level${pad(i)} from "./level${pad(i)}.json";`),
+      "",
+      "export const LEVELS = [",
+      ...levels.map((_, i) => `  level${pad(i)},`),
+      "];",
+      "",
+    ].join("\n")
+  );
+  console.log(`Wrote ${levels.length} levels`);
+  for (const l of levels) console.log(l.name.padEnd(9), "depth", unjamDepth(l), "random-win", l.randomWinRate);
+}

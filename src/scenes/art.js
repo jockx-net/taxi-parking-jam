@@ -20,7 +20,7 @@ export function loadArt(scene) {
     scene.load.svg(personKey(color), `assets/${personKey(color)}.svg`, { width: PERSON_PX, height: PERSON_PX });
   }
   scene.load.svg("tile", "assets/tile.svg", { width: CELL_PX, height: CELL_PX });
-  scene.load.svg("bay", "assets/bay.svg", { width: 220, height: 140 });
+  scene.load.svg("bay", "assets/bay.svg", { width: 150, height: 220 });
   scene.load.svg("bg", "assets/bg.svg", { width: 720, height: 1280 });
   scene.load.svg("logo", "assets/logo.svg", { width: 560, height: 340 });
 }
