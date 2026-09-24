@@ -16,7 +16,8 @@ npm run build
 ## Layout
 
 - `src/game/` — pure logic: `Taxi`, `GridLot` (maze/blocking), `Queue`,
-  `Level` (slots, auto-boarding, win/lose, events), `LevelLoader`, `solver`.
+  `Level` (slots, auto-boarding, win/lose, events), `LevelLoader`, `solver`,
+  `traffic` (road paths and yielding for the animated taxis).
 - `src/scenes/` — Phaser scenes; `GameScene` animates the events `Level`
   returns (taxi drives to slot, people walk aboard, taxi departs).
 - `src/data/levels/` — generated level JSON (do not hand-edit).

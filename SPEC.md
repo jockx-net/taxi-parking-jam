@@ -33,6 +33,19 @@ filled, and it leaves. Clear every taxi in the lot to win.
   map **exit**. A taxi drives along the main road, turns into its bay nose-in,
   and once full reverses out and leaves west along the main road.
 
+## Selecting while others are still moving
+
+- The rules resolve a tap instantly, but the animation takes a while. The
+  player is **never locked out**: as soon as a taxi starts moving, the next one
+  can be selected, and several taxis can be on the road at once.
+- Taxis **yield to taxis selected before them**: a later taxi will not join the
+  ring road ahead of an earlier one, waits for crossing/approaching earlier
+  traffic, follows rather than overtakes, and queues on the main road until the
+  earlier taxi that used its bay has fully left it.
+- Boarding and departure are shown in rules order, each once its taxi has
+  really reached its bay (boarding people walk to the taxi only then).
+- Win or lose is announced only once all movement has finished.
+
 ## Boarding slots
 
 - The level defines N slots. Tapping a free taxi sends it into an empty slot.

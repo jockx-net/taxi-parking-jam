@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { loadLevel } from "../game/LevelLoader.js";
 import { DIR_VECTORS } from "../game/Taxi.js";
+import { RoadPath, Traffic, Vehicle } from "../game/traffic.js";
 import { LEVELS } from "../data/levels/index.js";
 import { COLOR_HEX } from "../game/colors.js";
 import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
@@ -18,7 +19,6 @@ const BAY_Y = 952;
 const SLOT_SPACING = 210;
 const QUEUE_Y = 1130;
 const QUEUE_SPACING = 56;
-const DRIVE_SPEED = 1.5; // pixels per millisecond
 const PERSON_SCALE = 0.5;
 const DIR_ANGLE = { right: 0, down: 90, left: 180, up: -90 };
 
@@ -36,7 +36,14 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.config = LEVELS[this.levelIndex];
     this.level = loadLevel(this.config);
-    this.busy = false;
+    this.traffic = new Traffic();
+    this.vehicles = new Map();
+    this.ceremony = []; // board/depart events waiting for their taxi to be in its bay
+    this.pumping = false;
+    this.ended = false;
+    this.selectionCount = 0;
+    this.lastInSlot = []; // most recent vehicle sent to each slot, for bay ordering
+    this.simSpeed = 1; // test hook: >1 fast-forwards the traffic simulation
     this.taxiSprites = new Map();
     this.personSprites = new Map();
     this.pulses = [];
@@ -269,10 +276,11 @@ export class GameScene extends Phaser.Scene {
   // ---- input --------------------------------------------------------------
 
   onTaxiTapped(taxi) {
-    if (this.busy || this.level.status !== "playing" || taxi.state !== "parked") return;
+    if (this.level.status !== "playing" || taxi.state !== "parked") return;
     const events = this.level.selectTaxi(taxi.id);
     if (events) {
-      this.play(events);
+      this.refresh();
+      this.handleEvents(events);
     } else if (!this.level.hasFreeSlot()) {
       this.shakeSlotTaxis();
     } else {
@@ -300,18 +308,6 @@ export class GameScene extends Phaser.Scene {
     return new Promise((resolve) => this.tweens.add({ ...config, onComplete: resolve }));
   }
 
-  async play(events) {
-    this.busy = true;
-    for (const e of events) {
-      if (e.type === "enter") await this.animEnter(e);
-      else if (e.type === "board") await this.animBoard(e);
-      else await this.animDepart(e);
-    }
-    this.refresh();
-    this.busy = false;
-    this.checkEnd();
-  }
-
   // Waypoints from a taxi's parking cell around the one-way ring road (west
   // along the bottom, north up the left, east along the top, south down the
   // right), onto the main road and into its slot bay.
@@ -328,63 +324,92 @@ export class GameScene extends Phaser.Scene {
     return pts;
   }
 
-  // Smooth path through `points` with rounded corners.
-  roundedPath(points, radius) {
-    const pts = points.filter((p, i) => i === 0 || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > 0.5);
-    const path = new Phaser.Curves.Path(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const a = pts[i - 1];
-      const p = pts[i];
-      const b = pts[i + 1];
-      const dIn = Math.hypot(p.x - a.x, p.y - a.y);
-      const dOut = Math.hypot(b.x - p.x, b.y - p.y);
-      const r = Math.min(radius, dIn / 2, dOut / 2);
-      path.lineTo(p.x - ((p.x - a.x) / dIn) * r, p.y - ((p.y - a.y) / dIn) * r);
-      path.quadraticBezierTo(p.x + ((b.x - p.x) / dOut) * r, p.y + ((b.y - p.y) / dOut) * r, p.x, p.y);
+  // The rules resolve a selection instantly; the scene plays it out. Taxis start
+  // driving the moment they are selected, so the player can keep selecting while
+  // earlier taxis are still on the road (later taxis yield to earlier ones, see
+  // game/traffic.js). Boarding and departure happen in rules order, each once its
+  // taxi has really reached its bay.
+  handleEvents(events) {
+    for (const e of events) {
+      if (e.type === "enter") this.startVehicle(e);
+      else this.ceremony.push(e);
     }
-    path.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-    return path;
+    this.pumpCeremony();
   }
 
-  // Drives `sprite` along `path`, facing the direction of travel.
-  driveAlong(sprite, path, fromScale, toScale) {
-    const progress = { t: 0 };
-    const point = new Phaser.Math.Vector2();
-    const tangent = new Phaser.Math.Vector2();
-    return this.tween({
-      targets: progress,
-      t: 1,
-      duration: Math.max(500, path.getLength() / DRIVE_SPEED),
-      ease: "Quad.easeInOut",
-      onUpdate: () => {
-        path.getPoint(progress.t, point);
-        path.getTangent(progress.t, tangent);
-        sprite.setPosition(point.x, point.y).setRotation(Math.atan2(tangent.y, tangent.x));
-        sprite.setScale(fromScale + (toScale - fromScale) * progress.t);
-      },
-    });
+  // Where a taxi joins the ring road, as a distance along the ring measured from
+  // the bottom-right corner in the direction of traffic (west, north, east, south).
+  trackEntry(taxi, from) {
+    const { left, right, top, bottom } = this.lane;
+    const w = right - left;
+    const h = bottom - top;
+    if (taxi.dir === "down") return { point: { x: from.x, y: bottom }, s: right - from.x };
+    if (taxi.dir === "left") return { point: { x: left, y: from.y }, s: w + (bottom - from.y) };
+    if (taxi.dir === "up") return { point: { x: from.x, y: top }, s: w + h + (from.x - left) };
+    return { point: { x: right, y: from.y }, s: 2 * w + h + (from.y - top) };
   }
 
-  async animEnter({ taxiId, slot }) {
-    for (const p of this.pulses) p.remove();
-    this.pulses = [];
+  startVehicle({ taxiId, slot }) {
     const taxi = this.level.grid.getTaxi(taxiId);
     const sprite = this.taxiSprites.get(taxiId).setDepth(30).clearTint().setAlpha(1);
     sprite.disableInteractive();
-    const path = this.roundedPath(this.routeFor(taxi, slot), 30);
-    await this.driveAlong(sprite, path, this.gridScale(), this.slotScale(taxi));
-    sprite.setAngle(90).setDepth(12);
+    const from = this.taxiCenter(taxi);
+    const entry = this.trackEntry(taxi, from);
+    const path = new RoadPath(this.routeFor(taxi, slot), 30);
+    const bayLeg = BAY_Y - MAIN_Y;
+    const vehicle = new Vehicle({
+      id: taxiId,
+      priority: ++this.selectionCount,
+      path,
+      lengthCells: taxi.length,
+      cellPx: CELL_PX,
+      scaleFrom: this.gridScale(),
+      scaleTo: this.slotScale(taxi),
+      entryS: entry.s,
+      mergeDist: Math.hypot(entry.point.x - from.x, entry.point.y - from.y),
+      bayLegS: path.length - bayLeg - 30,
+      gateS: path.length - bayLeg - 200, // queue up well clear of a departing taxi's turning circle
+      waitFor: this.lastInSlot[slot] ?? null,
+    });
+    this.lastInSlot[slot] = vehicle;
+    vehicle.arrived = new Promise((resolve) => {
+      vehicle.onArrived = () => {
+        this.showSeatDots(taxi, slot);
+        resolve();
+      };
+    });
+    this.traffic.add(vehicle);
+    this.vehicles.set(taxiId, vehicle);
+  }
 
+  showSeatDots(taxi, slot) {
     const target = this.slotCenter(slot);
     const view = this.slotViews[slot];
-    view.taxiId = taxiId;
+    view.dots.forEach((d) => d.destroy());
+    view.taxiId = taxi.id;
     view.dots = Array.from({ length: taxi.capacity }, (_, k) => {
       const x = target.x + (k - (taxi.capacity - 1) / 2) * 20;
       return this.add.circle(x, target.y + BAY_H / 2 - 16, 7, 0x1f232d).setStrokeStyle(2, 0xffffff, 0.9).setDepth(13);
     });
   }
 
+  async pumpCeremony() {
+    if (this.pumping) return;
+    this.pumping = true;
+    while (this.ceremony.length) {
+      const e = this.ceremony.shift();
+      try {
+        if (e.type === "board") await this.animBoard(e);
+        else this.startDeparture(e);
+      } catch (error) {
+        console.error("animation event failed", e, error);
+      }
+    }
+    this.pumping = false;
+  }
+
   async animBoard({ taxiId, slot, personId, seats, spawned }) {
+    await this.vehicles.get(taxiId).arrived;
     const sprite = this.personSprites.get(personId);
     this.personSprites.delete(personId);
     this.displayQueue.splice(this.displayQueue.indexOf(personId), 1);
@@ -394,8 +419,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.relayoutQueue();
 
-    const view = this.slotViews[slot];
-    const dot = view.dots[seats - 1];
+    const dot = this.slotViews[slot].dots[seats - 1];
     const taxiSprite = this.taxiSprites.get(taxiId);
     sprite.setDepth(40);
     await this.tween({
@@ -421,27 +445,54 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  async animDepart({ taxiId, slot }) {
+  // A full taxi reverses out of its bay, turns to face the exit and drives west.
+  startDeparture({ taxiId, slot }) {
     const view = this.slotViews[slot];
-    const sprite = this.taxiSprites.get(taxiId);
     view.dots.forEach((d) => d.destroy());
     view.dots = [];
-    sprite.setDepth(30);
-    await this.tween({ targets: sprite, y: MAIN_Y, duration: 320, ease: "Sine.easeInOut" }); // reverse out of the bay
-    this.tweens.add({ targets: sprite, angle: 180, duration: 300, ease: "Sine.easeInOut" });
-    await this.tween({ targets: sprite, x: -260, duration: Math.max(500, (sprite.x + 260) / DRIVE_SPEED), ease: "Quad.easeIn" });
-    sprite.destroy();
-    this.taxiSprites.delete(taxiId);
     view.taxiId = null;
+    const x = this.slotCenter(slot).x;
+    const roadY = MAIN_Y + 6;
+    this.vehicles.get(taxiId).beginDeparture({
+      reversePath: new RoadPath([{ x, y: BAY_Y }, { x, y: roadY }]),
+      leavePath: new RoadPath([{ x, y: roadY }, { x: -320, y: roadY }]),
+      pivotTarget: Math.PI,
+    });
+  }
+
+  update(_, delta) {
+    let remaining = Math.min(delta, 50) * this.simSpeed;
+    while (remaining > 0) {
+      const step = Math.min(16, remaining);
+      this.traffic.step(step);
+      remaining -= step;
+    }
+    for (const vehicle of [...this.vehicles.values()]) {
+      const sprite = this.taxiSprites.get(vehicle.id);
+      if (vehicle.state === "gone") {
+        sprite.destroy();
+        this.taxiSprites.delete(vehicle.id);
+        this.vehicles.delete(vehicle.id);
+        this.traffic.remove(vehicle);
+      } else {
+        sprite.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.heading).setScale(vehicle.scale);
+        sprite.setDepth(vehicle.state === "parked" ? 12 : 30);
+      }
+    }
+    this.maybeFinish();
   }
 
   // ---- end of game --------------------------------------------------------
 
-  checkEnd() {
+  // Once the rules say the game is over and every taxi has stopped moving.
+  maybeFinish() {
+    if (this.ended || this.level.status === "playing" || this.pumping || this.ceremony.length) return;
+    if (this.traffic.vehicles.some((v) => v.moving)) return;
+    this.ended = true;
     if (this.level.status === "won") {
       markCleared(this.levelIndex);
       this.time.delayedCall(500, () => this.scene.start("Result", { status: "won", levelIndex: this.levelIndex }));
-    } else if (this.level.status === "lost") {
+    } else {
       this.time.delayedCall(700, () => this.showLostOverlay());
     }
   }
