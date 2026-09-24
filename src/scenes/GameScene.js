@@ -96,10 +96,7 @@ export class GameScene extends Phaser.Scene {
 
   drawBackdrop() {
     addBackground(this);
-    const { grid } = this.config;
     const { left, right, top, bottom } = this.lane;
-    const w = grid.width * this.cell;
-    const h = grid.height * this.cell;
 
     const roads = this.add.graphics().setDepth(-6);
     const curb = 0x5a6178;
@@ -116,7 +113,7 @@ export class GameScene extends Phaser.Scene {
     mainRoad(asphalt, 0);
 
     const pavement = this.add.graphics().setDepth(-7);
-    pavement.fillStyle(0x1f2430, 1).fillRoundedRect(left + ROAD_W / 2 + 4, top + ROAD_W / 2 + 4, ringW - ROAD_W - 8, ringH - ROAD_W - 8, 22);
+    pavement.fillStyle(0x858a94, 1).fillRoundedRect(left + ROAD_W / 2 + 4, top + ROAD_W / 2 + 4, ringW - ROAD_W - 8, ringH - ROAD_W - 8, 22);
 
     const marks = this.add.graphics().setDepth(-5);
     marks.lineStyle(3, 0xffffff, 0.35);
@@ -149,10 +146,6 @@ export class GameScene extends Phaser.Scene {
 
     this.add.text(46, MAIN_Y, "EXIT", { ...TEXT, fontSize: "20px", fontStyle: "bold", color: "#f5c518" }).setOrigin(0.5).setDepth(-4);
     marks.fillTriangle(12, MAIN_Y, 26, MAIN_Y - 9, 26, MAIN_Y + 9);
-
-    const lot = this.add.graphics().setDepth(-5);
-    lot.fillStyle(0x858a94, 1).fillRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14); // plain concrete
-    lot.lineStyle(4, 0x555b68, 1).strokeRoundedRect(this.origin.x - 10, this.origin.y - 10, w + 20, h + 20, 14);
   }
 
   buildHud() {

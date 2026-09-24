@@ -96,7 +96,7 @@ filled, and it leaves. Clear every taxi in the lot to win.
   level and taxis keep that scale in the lot, on the road and in the bays. Small
   lots are simply drawn smaller, inside a ring road that is never narrower than
   the bays need.
-- The lot is plain, uniformly painted concrete (no grid: the cells mean nothing
+- Everything inside the ring road is plain, uniformly painted concrete (no grid: the cells mean nothing
   to the player).
 - Stylized 2D cartoon art: top-down taxis per color and length with a long
   bonnet (grille, headlights, chevrons) so the front is unmistakable, people
