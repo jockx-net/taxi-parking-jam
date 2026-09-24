@@ -14,7 +14,7 @@ const COLORS = {
   green: "#2ecc71",
   yellow: "#f5c518",
   purple: "#9b59b6",
-  orange: "#f39c12",
+  orange: "#a5622a",
 };
 const CELL = 128;
 

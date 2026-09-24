@@ -4,10 +4,10 @@
   <rect x="18" y="109" width="22" height="14" rx="4" fill="#15171c"/>
   <rect x="82" y="5" width="22" height="14" rx="4" fill="#15171c"/>
   <rect x="82" y="109" width="22" height="14" rx="4" fill="#15171c"/>
-  <rect x="8" y="14" width="112" height="100" rx="24" fill="#f39c12" stroke="#9e650c" stroke-width="5"/>
-  <rect x="72" y="16" width="42" height="96" rx="22" fill="#ffaf14" stroke="#9e650c" stroke-width="3"/>
-  <path d="M82 40 Q97 34 106 42 M82 88 Q97 94 106 86" fill="none" stroke="#9e650c" stroke-width="3" opacity="0.55" stroke-linecap="round"/>
-  <path d="M82 52 L94 64 L82 76 M95 52 L107 64 L95 76" fill="none" stroke="#9e650c" stroke-width="5" opacity="0.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="8" y="14" width="112" height="100" rx="24" fill="#a5622a" stroke="#6b401b" stroke-width="5"/>
+  <rect x="72" y="16" width="42" height="96" rx="22" fill="#b96e2f" stroke="#6b401b" stroke-width="3"/>
+  <path d="M82 40 Q97 34 106 42 M82 88 Q97 94 106 86" fill="none" stroke="#6b401b" stroke-width="3" opacity="0.55" stroke-linecap="round"/>
+  <path d="M82 52 L94 64 L82 76 M95 52 L107 64 L95 76" fill="none" stroke="#6b401b" stroke-width="5" opacity="0.6" stroke-linecap="round" stroke-linejoin="round"/>
   <rect x="110" y="44" width="9" height="40" rx="4" fill="#15171c"/>
   <circle cx="108" cy="30" r="9" fill="#fff6a8" stroke="#c9a400" stroke-width="2.5"/>
   <circle cx="108" cy="98" r="9" fill="#fff6a8" stroke="#c9a400" stroke-width="2.5"/>
@@ -15,13 +15,13 @@
   <rect x="32" y="105" width="12" height="6" fill="#ffffff"/>
   <rect x="44" y="17" width="12" height="6" fill="#ffffff"/>
   <rect x="44" y="105" width="12" height="6" fill="#20232b"/>
-  <rect x="22" y="30" width="52" height="68" rx="16" fill="#ffc317" stroke="#9e650c" stroke-width="3"/>
+  <rect x="22" y="30" width="52" height="68" rx="16" fill="#ce7b35" stroke="#6b401b" stroke-width="3"/>
   <rect x="42" y="42" width="6" height="44" rx="7" fill="#243044" stroke="#0d1420" stroke-width="2"/>
   <path d="M48 34 L68 44 Q74 64 68 84 L48 94 Z" fill="#33517a" stroke="#0d1420" stroke-width="3"/>
   <path d="M52 39 L62 45 L62 58 L52 52 Z" fill="#ffffff" opacity="0.35"/>
   <path d="M38 40 L26 47 Q22 64 26 81 L38 88 Z" fill="#243044" stroke="#0d1420" stroke-width="3"/>
-  <rect x="35" y="52" width="26" height="24" rx="6" fill="#fffbe0" stroke="#9e650c" stroke-width="2"/>
-  <rect x="41" y="60" width="14" height="8" rx="2" fill="#9e650c" opacity="0.8"/>
+  <rect x="35" y="52" width="26" height="24" rx="6" fill="#fffbe0" stroke="#6b401b" stroke-width="2"/>
+  <rect x="41" y="60" width="14" height="8" rx="2" fill="#6b401b" opacity="0.8"/>
   <rect x="9" y="28" width="7" height="16" rx="3" fill="#ff4d4d"/>
   <rect x="9" y="84" width="7" height="16" rx="3" fill="#ff4d4d"/>
 </svg>
