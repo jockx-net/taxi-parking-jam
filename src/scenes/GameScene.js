@@ -3,7 +3,7 @@ import { loadLevel } from "../game/LevelLoader.js";
 import { DIR_VECTORS } from "../game/Taxi.js";
 import { LEVELS } from "../data/levels/index.js";
 import { COLOR_HEX } from "../game/colors.js";
-import { CELL_PX, PERSON_PX, personKey, taxiKey } from "./textures.js";
+import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
 import { markCleared } from "./progress.js";
 
 const W = 720;
@@ -12,6 +12,7 @@ const SLOT_Y = 850;
 const SLOT_W = 200;
 const QUEUE_Y = 1050;
 const QUEUE_SPACING = 56;
+const PERSON_SCALE = 0.5;
 const DIR_ANGLE = { right: 0, down: 90, left: 180, up: -90 };
 
 const TEXT = { fontFamily: "Arial", color: "#ffffff" };
@@ -46,6 +47,7 @@ export class GameScene extends Phaser.Scene {
     this.buildSlots();
     this.buildQueue();
     this.buildTaxis();
+    if (this.levelIndex === 0) this.buildHint();
     this.refresh();
   }
 
@@ -57,7 +59,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   queuePos(i) {
-    const n = this.config.queuePreviewSize;
+    const n = Math.min(this.config.queuePreviewSize, this.config.queue.length);
     return { x: W / 2 + (i - (n - 1) / 2) * QUEUE_SPACING, y: QUEUE_Y };
   }
 
@@ -79,15 +81,19 @@ export class GameScene extends Phaser.Scene {
   // ---- static scenery -----------------------------------------------------
 
   drawBackdrop() {
+    addBackground(this);
     const { grid } = this.config;
     const w = grid.width * this.cell;
     const h = grid.height * this.cell;
-    this.add.rectangle(W / 2, GRID_BOX.top + GRID_BOX.size / 2, W - 40, GRID_BOX.size + 30, 0x2b303c).setStrokeStyle(2, 0x3c4353);
-    const lot = this.add.graphics();
-    lot.fillStyle(0x3a4050, 1).fillRoundedRect(this.origin.x - 6, this.origin.y - 6, w + 12, h + 12, 10);
-    lot.lineStyle(1, 0x4b5366, 0.7);
-    for (let x = 0; x <= grid.width; x++) lot.lineBetween(this.origin.x + x * this.cell, this.origin.y, this.origin.x + x * this.cell, this.origin.y + h);
-    for (let y = 0; y <= grid.height; y++) lot.lineBetween(this.origin.x, this.origin.y + y * this.cell, this.origin.x + w, this.origin.y + y * this.cell);
+    const frame = this.add.graphics().setDepth(-5);
+    frame.fillStyle(0x20242f, 1).fillRoundedRect(this.origin.x - 14, this.origin.y - 14, w + 28, h + 28, 18);
+    frame.lineStyle(4, 0x4b5366, 1).strokeRoundedRect(this.origin.x - 14, this.origin.y - 14, w + 28, h + 28, 18);
+    const floor = this.add.tileSprite(this.origin.x, this.origin.y, w, h, "tile").setOrigin(0).setDepth(-4);
+    floor.setTileScale(this.gridScale(), this.gridScale());
+    const lines = this.add.graphics().setDepth(-3);
+    lines.lineStyle(1, 0xffffff, 0.08);
+    for (let x = 0; x <= grid.width; x++) lines.lineBetween(this.origin.x + x * this.cell, this.origin.y, this.origin.x + x * this.cell, this.origin.y + h);
+    for (let y = 0; y <= grid.height; y++) lines.lineBetween(this.origin.x, this.origin.y + y * this.cell, this.origin.x + w, this.origin.y + y * this.cell);
   }
 
   buildHud() {
@@ -107,11 +113,8 @@ export class GameScene extends Phaser.Scene {
   buildSlots() {
     this.level.slots.forEach((_, i) => {
       const { x, y } = this.slotCenter(i);
-      const bay = this.add.graphics();
-      bay.lineStyle(3, 0xf5c518, 0.8).strokeRoundedRect(x - SLOT_W / 2, y - 62, SLOT_W, 124, 12);
-      bay.fillStyle(0x2b303c, 1).fillRoundedRect(x - SLOT_W / 2 + 2, y - 60, SLOT_W - 4, 120, 10);
-      bay.setDepth(0);
-      this.add.text(x, y - 74, `SLOT ${i + 1}`, { ...TEXT, fontSize: "18px", color: "#f5c518" }).setOrigin(0.5);
+      this.add.image(x, y, "bay").setDisplaySize(SLOT_W + 10, 128).setDepth(0);
+      this.add.text(x, y - 76, `SLOT ${i + 1}`, { ...TEXT, fontSize: "18px", color: "#f5c518" }).setOrigin(0.5);
       this.slotViews.push({ dots: [], taxiId: null });
     });
   }
@@ -143,7 +146,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   queueScale(index) {
-    return index < this.config.queueHeadSize ? 1 : 0.78;
+    return index < this.config.queueHeadSize ? PERSON_SCALE : PERSON_SCALE * 0.8;
   }
 
   queueAlpha(index) {
@@ -163,6 +166,18 @@ export class GameScene extends Phaser.Scene {
       sprite.on("pointerdown", () => this.onTaxiTapped(taxi));
       this.taxiSprites.set(taxi.id, sprite);
     }
+  }
+
+  buildHint() {
+    this.add
+      .text(W / 2, 1160, "Tap a bright taxi to send it to a slot.\nPeople in the HEAD board taxis of their color.\nFill every taxi to clear the lot!", {
+        ...TEXT,
+        fontSize: "24px",
+        align: "center",
+        color: "#c9d3e6",
+        lineSpacing: 8,
+      })
+      .setOrigin(0.5);
   }
 
   // ---- state presentation -------------------------------------------------
@@ -197,7 +212,7 @@ export class GameScene extends Phaser.Scene {
     if (events) {
       this.play(events);
     } else if (!this.level.hasFreeSlot()) {
-      this.shake(this.slotViews.map((_, i) => this.slotCenter(i)));
+      this.shakeSlotTaxis();
     } else {
       this.flashBlocked(taxi);
     }
@@ -210,7 +225,7 @@ export class GameScene extends Phaser.Scene {
     if (blocker) this.tweens.add({ targets: blocker, alpha: 0.35, yoyo: true, repeat: 2, duration: 110, onComplete: () => blocker.setAlpha(0.92) });
   }
 
-  shake(_) {
+  shakeSlotTaxis() {
     for (const view of this.slotViews) {
       const sprite = view.taxiId && this.taxiSprites.get(view.taxiId);
       if (sprite) this.tweens.add({ targets: sprite, x: sprite.x + 6, yoyo: true, repeat: 3, duration: 45 });
@@ -250,7 +265,7 @@ export class GameScene extends Phaser.Scene {
       y: sprite.y + dy * cells * this.cell,
       scaleX: this.gridScale(),
       scaleY: this.gridScale(),
-      duration: 120 + 70 * cells,
+      duration: 100 + 55 * cells,
       ease: "Quad.easeIn",
     });
     const target = this.slotCenter(slot);
@@ -262,7 +277,7 @@ export class GameScene extends Phaser.Scene {
       angle: sprite.angle + turn,
       scaleX: this.slotScale(taxi),
       scaleY: this.slotScale(taxi),
-      duration: 380,
+      duration: 340,
       ease: "Cubic.easeOut",
     });
     sprite.setAngle(0).setDepth(12);
@@ -294,15 +309,15 @@ export class GameScene extends Phaser.Scene {
       targets: sprite,
       x: taxiSprite.x,
       y: taxiSprite.y,
-      scaleX: 0.5,
-      scaleY: 0.5,
-      duration: 380,
+      scaleX: PERSON_SCALE * 0.5,
+      scaleY: PERSON_SCALE * 0.5,
+      duration: 300,
       ease: "Cubic.easeIn",
     });
     sprite.destroy();
     dot.setFillStyle(COLOR_HEX[this.level.grid.getTaxi(taxiId).color], 1);
     const s = taxiSprite.scaleX;
-    await this.tween({ targets: taxiSprite, scaleX: s * 1.08, scaleY: s * 1.08, yoyo: true, duration: 90 });
+    await this.tween({ targets: taxiSprite, scaleX: s * 1.08, scaleY: s * 1.08, yoyo: true, duration: 70 });
   }
 
   relayoutQueue() {
@@ -316,7 +331,7 @@ export class GameScene extends Phaser.Scene {
   async animDepart({ taxiId, slot }) {
     const view = this.slotViews[slot];
     const sprite = this.taxiSprites.get(taxiId);
-    await this.tween({ targets: sprite, y: sprite.y - 150, alpha: 0, duration: 380, ease: "Quad.easeIn" });
+    await this.tween({ targets: sprite, y: sprite.y - 150, alpha: 0, duration: 300, ease: "Quad.easeIn" });
     sprite.destroy();
     this.taxiSprites.delete(taxiId);
     view.dots.forEach((d) => d.destroy());

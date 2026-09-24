@@ -30,14 +30,17 @@ filled, and it leaves. Clear every taxi in the lot to win.
 
 ## The queue
 
-- An endless stream of colored people, fully visible as a preview strip.
+- A fixed, fully visible line of colored people: exactly one person per taxi
+  seat in the level, so nobody is ever left over and the game is a
+  deterministic, perfect-information puzzle (retrying replays the same queue).
+  The order was generated with a seed and the level is verified winnable by a
+  solver.
 - The first H people form the **queue head**. Any person in the head whose
   color matches a taxi in a slot (with a free seat) boards it — it is **not**
   strictly first-in-line. Boarding is automatic and cascades until nothing in
   the head matches.
-- When someone boards, the people behind shift forward and a new person joins
-  the tail. New people are drawn from the colors of taxis that have not yet
-  departed, so the queue never asks for colors that no longer exist.
+- When someone boards, everyone behind shifts forward, which may bring a new
+  person into the head and reveal another at the end of the visible preview.
 - Boarding is animated (person walks to the taxi, seat fills, taxi departs).
 
 ## End conditions

@@ -5,7 +5,7 @@ import { LevelSelectScene } from "./scenes/LevelSelectScene.js";
 import { GameScene } from "./scenes/GameScene.js";
 import { ResultScene } from "./scenes/ResultScene.js";
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: "game-container",
   width: 720,
@@ -17,3 +17,5 @@ new Phaser.Game({
   },
   scene: [BootScene, MenuScene, LevelSelectScene, GameScene, ResultScene],
 });
+
+if (import.meta.env.DEV) window.__game = game;

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { addBackground } from "./art.js";
 import { LEVELS } from "../data/levels/index.js";
 import { loadCleared } from "./progress.js";
 
@@ -10,6 +11,7 @@ export class LevelSelectScene extends Phaser.Scene {
   create() {
     const { width } = this.scale;
     const cleared = loadCleared();
+    addBackground(this);
 
     this.add
       .text(width / 2, 100, "Select Level", { fontFamily: "Arial", fontSize: "48px", color: "#ffffff", fontStyle: "bold" })

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { addBackground } from "./art.js";
 import { LEVELS } from "../data/levels/index.js";
 
 export class ResultScene extends Phaser.Scene {
@@ -12,6 +13,7 @@ export class ResultScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    addBackground(this);
     this.add
       .text(width / 2, height * 0.3, "Lot cleared!", { fontFamily: "Arial", fontSize: "64px", color: "#2ecc71", fontStyle: "bold" })
       .setOrigin(0.5);
