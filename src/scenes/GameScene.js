@@ -8,16 +8,18 @@ import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
 import { markCleared } from "./progress.js";
 
 const W = 720;
-const GRID_SIZE = 500;
-const GRID_TOP = 172;
+const CELL_SIZE = 58; // on-screen size of one lot cell = the reference size of a taxi cell on the road, in the lot and in the bays
+const RING_CY = 422; // vertical centre of the ring road
+const MIN_RING_HALF_W = 300; // the ring is never narrower than the bays need
+const MIN_RING_HALF_H = 200;
 const ROAD_W = 56;
 const LANE_GAP = 44; // lot edge to the centre line of the ring road
 const MAIN_Y = 848; // centre line of the main road (flows west to the exit)
 const BAY_W = 140;
-const BAY_H = 190;
-const BAY_Y = 980;
+const BAY_H = 196;
+const BAY_Y = 982;
 const SLOT_SPACING = 210;
-const QUEUE_Y = 1152;
+const QUEUE_Y = 1170;
 const QUEUE_SPACING = 56;
 const PERSON_SCALE = 0.5;
 const DIR_ANGLE = { right: 0, down: 90, left: 180, up: -90 };
@@ -50,19 +52,13 @@ export class GameScene extends Phaser.Scene {
     this.slotViews = [];
 
     const { grid } = this.config;
-    this.cell = Math.min(GRID_SIZE / grid.width, GRID_SIZE / grid.height);
-    this.origin = {
-      x: W / 2 - (grid.width * this.cell) / 2,
-      y: GRID_TOP + (GRID_SIZE - grid.height * this.cell) / 2,
-    };
+    this.cell = CELL_SIZE; // every level uses the same cell size, so small lots are simply smaller
     const lotW = grid.width * this.cell;
     const lotH = grid.height * this.cell;
-    this.lane = {
-      left: this.origin.x - LANE_GAP,
-      right: this.origin.x + lotW + LANE_GAP,
-      top: this.origin.y - LANE_GAP,
-      bottom: this.origin.y + lotH + LANE_GAP,
-    };
+    this.origin = { x: W / 2 - lotW / 2, y: RING_CY - lotH / 2 };
+    const halfW = Math.max(lotW / 2 + LANE_GAP, MIN_RING_HALF_W);
+    const halfH = Math.max(lotH / 2 + LANE_GAP, MIN_RING_HALF_H);
+    this.lane = { left: W / 2 - halfW, right: W / 2 + halfW, top: RING_CY - halfH, bottom: RING_CY + halfH };
 
     this.drawBackdrop();
     this.buildHud();
@@ -96,10 +92,6 @@ export class GameScene extends Phaser.Scene {
     return this.cell / CELL_PX;
   }
 
-  slotScale(taxi) {
-    return Math.min(0.6, (BAY_H - 30) / (taxi.length * CELL_PX));
-  }
-
   // ---- static scenery -----------------------------------------------------
 
   drawBackdrop() {
@@ -122,6 +114,9 @@ export class GameScene extends Phaser.Scene {
     roads.lineStyle(ROAD_W, asphalt, 1).strokeRoundedRect(left, top, ringW, ringH, 40);
     extension(asphalt, 0);
     mainRoad(asphalt, 0);
+
+    const pavement = this.add.graphics().setDepth(-7);
+    pavement.fillStyle(0x1f2430, 1).fillRoundedRect(left + ROAD_W / 2 + 4, top + ROAD_W / 2 + 4, ringW - ROAD_W - 8, ringH - ROAD_W - 8, 22);
 
     const marks = this.add.graphics().setDepth(-5);
     marks.lineStyle(3, 0xffffff, 0.35);
@@ -196,7 +191,7 @@ export class GameScene extends Phaser.Scene {
       .rectangle((a.x + b.x) / 2, QUEUE_Y, b.x - a.x + QUEUE_SPACING + 8, 76, 0x3d8b5a, 0.35)
       .setStrokeStyle(3, 0x5ad187);
     this.add.text((a.x + b.x) / 2, QUEUE_Y - 58, "HEAD  -  can board", { ...TEXT, fontSize: "20px", color: "#5ad187" }).setOrigin(0.5);
-    this.add.text(W / 2, QUEUE_Y + 62, "queue", { ...TEXT, fontSize: "18px", color: "#7f8aa0" }).setOrigin(0.5);
+    this.add.text(W / 2, QUEUE_Y + 54, "queue", { ...TEXT, fontSize: "18px", color: "#7f8aa0" }).setOrigin(0.5);
 
     this.displayQueue = this.level.queue.peek().map((p) => p.id);
     this.level.queue.peek().forEach((p, i) => this.spawnPerson(p, i, false));
@@ -239,7 +234,7 @@ export class GameScene extends Phaser.Scene {
 
   buildHint() {
     this.add
-      .text(W / 2, 1246, "Tap a bright taxi: it drives round the one-way street to a slot.\nLonger taxis have more seats. People in the HEAD board\ntaxis of their color; a full taxi leaves by the exit.", {
+      .text(W / 2, 1262, "Tap a bright taxi: it drives round the one-way street to a slot. Longer taxis\nhave more seats. People in the HEAD board taxis of their color.", {
         ...TEXT,
         fontSize: "19px",
         align: "center",
@@ -358,7 +353,7 @@ export class GameScene extends Phaser.Scene {
   // front of a nearer one). Only the final approach is checked: the ring road's
   // far side passes close to the bays, but nobody should queue there.
   gateFor(vehicle, slot) {
-    const zones = this.level.slots.map((_, i) => [{ x: this.slotCenter(i).x, y: MAIN_Y + 6, r: 110 }]);
+    const zones = this.level.slots.map((_, i) => [{ x: this.slotCenter(i).x, y: MAIN_Y + 6, r: 125 }]);
     const approach = vehicle.path.length - (BAY_Y - MAIN_Y) - (this.lane.right - this.slotCenter(slot).x) - 300;
     for (let s = Math.max(0, approach); s < vehicle.path.length; s += 4) {
       const body = vehicle.circlesAt(vehicle.path.poseAt(s), vehicle.scaleAt(vehicle.path, s));
@@ -399,7 +394,7 @@ export class GameScene extends Phaser.Scene {
       lengthCells: taxi.length,
       cellPx: CELL_PX,
       scaleFrom: this.gridScale(),
-      scaleTo: this.slotScale(taxi),
+      scaleTo: this.gridScale(),
       entryS: entry.s,
       mergeDist: Math.hypot(entry.point.x - from.x, entry.point.y - from.y),
       bayLegS: path.length - bayLeg - 30,
@@ -410,7 +405,7 @@ export class GameScene extends Phaser.Scene {
     vehicle.bay = slot;
     vehicle.arrived = new Promise((resolve) => {
       vehicle.onArrived = () => {
-        this.showSeatDots(taxi, slot);
+        this.showSeatDots(taxi, vehicle.bay);
         resolve();
       };
     });
@@ -425,7 +420,7 @@ export class GameScene extends Phaser.Scene {
     view.taxiId = taxi.id;
     view.dots = Array.from({ length: taxi.capacity }, (_, k) => {
       const x = target.x + (k - (taxi.capacity - 1) / 2) * 20;
-      return this.add.circle(x, target.y + BAY_H / 2 - 16, 7, 0x1f232d).setStrokeStyle(2, 0xffffff, 0.9).setDepth(13);
+      return this.add.circle(x, target.y + BAY_H / 2 + 14, 7, 0x1f232d).setStrokeStyle(2, 0xffffff, 0.9).setDepth(13);
     });
   }
 
@@ -499,6 +494,49 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // A taxi picks its bay when tapped, but another bay may free up while it is
+  // queued on the final approach. Let it switch to a bay that is free right now,
+  // so it (and everyone queued behind it) isn't held up for nothing.
+  tryReassign(v) {
+    if (v.state !== "driving" || !v.waitFor || v.waitFor.hasLeftBay() || v.entryS === null) return;
+    const { left, right, top, bottom } = this.lane;
+    const onRightLane = v.x >= right - 6 && v.y > top && v.y < MAIN_Y - 40 && Math.abs(v.heading - Math.PI / 2) < 0.3;
+    const onMainRoad = Math.abs(v.y - MAIN_Y) < 30 && Math.abs(v.heading - Math.PI) < 0.3;
+    if (!onRightLane && !onMainRoad) return;
+
+    let target = null;
+    this.level.slots.forEach((_, i) => {
+      const last = this.lastInSlot[i];
+      if (i === v.bay || (last && !last.hasLeftBay())) return;
+      const x = this.slotCenter(i).x;
+      if (onMainRoad && x > v.x - 60) return; // already driven past it
+      if (target === null || x > this.slotCenter(target).x) target = i;
+    });
+    if (target === null) return;
+
+    const oldBay = v.bay;
+    const previous = v.waitFor;
+    for (const w of this.vehicles.values()) if (w.waitFor === v && w.bay === oldBay) w.waitFor = previous;
+    if (this.lastInSlot[oldBay] === v) this.lastInSlot[oldBay] = previous;
+
+    const slotX = this.slotCenter(target).x;
+    const pts = [{ x: v.x, y: v.y }];
+    if (onRightLane) pts.push({ x: right, y: MAIN_Y });
+    pts.push({ x: slotX, y: MAIN_Y }, { x: slotX, y: BAY_Y });
+    v.path = new RoadPath(pts, 30);
+    v.s = 0;
+    v.mergeDist = 0;
+    const w = right - left;
+    const h = bottom - top;
+    v.entryS = onRightLane ? 2 * w + h + (v.y - top) : 2 * w + h + (MAIN_Y - top) + (right - v.x);
+    v.bayLegS = v.path.length - (BAY_Y - MAIN_Y) - 30;
+    v.bay = target;
+    v.waitFor = this.lastInSlot[target] ?? null;
+    v.gateS = this.gateFor(v, target);
+    v.pushUntilS = -1;
+    this.lastInSlot[target] = v;
+  }
+
   update(_, delta) {
     let remaining = Math.min(delta, 50) * this.simSpeed;
     while (remaining > 0) {
@@ -517,6 +555,11 @@ export class GameScene extends Phaser.Scene {
         sprite.setPosition(vehicle.x, vehicle.y).setRotation(vehicle.heading).setScale(vehicle.scale);
         sprite.setDepth(vehicle.state === "parked" ? 12 : 30);
       }
+    }
+    this.reassignTimer = (this.reassignTimer ?? 0) + Math.min(delta, 50) * this.simSpeed;
+    if (this.reassignTimer > 200) {
+      this.reassignTimer = 0;
+      for (const vehicle of this.traffic.vehicles) this.tryReassign(vehicle);
     }
     this.maybeFinish();
   }

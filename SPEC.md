@@ -42,6 +42,9 @@ filled, and it leaves. Clear every taxi in the lot to win.
   ring road ahead of an earlier one, waits for crossing/approaching earlier
   traffic, follows rather than overtakes, and queues on the main road until the
   earlier taxi that used its bay has fully left it.
+- A taxi picks a bay when tapped, but while it is still on the final approach
+  it switches to any bay that becomes free, so it never waits at the junction
+  for one bay while another is empty.
 - Boarding and departure are shown in rules order, each once its taxi has
   really reached its bay (boarding people walk to the taxi only then).
 - Win or lose is announced only once all movement has finished.
@@ -87,6 +90,10 @@ filled, and it leaves. Clear every taxi in the lot to win.
 ## Presentation
 
 - Portrait 720x1280 canvas, FIT-scaled and centered.
+- One reference taxi size everywhere: a lot cell is the same size in every
+  level and taxis keep that scale in the lot, on the road and in the bays. Small
+  lots are simply drawn smaller, inside a ring road that is never narrower than
+  the bays need.
 - Stylized 2D cartoon art: top-down taxis per color and length with a long
   bonnet (grille, headlights, chevrons) so the front is unmistakable, people
   sprites, ring/main road, slot bays.
