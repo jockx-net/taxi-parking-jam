@@ -1,44 +1,31 @@
-// Endless queue of colored people, fully visible as a `previewSize`-long
-// strip. The first `headSize` people are the head: any of them may board a
-// matching taxi. Removing someone shifts the rest forward and appends a new
-// person, drawn from `colorSource()` (the colors still wanted by the lot).
+// The people queue: a fixed, fully known sequence (one person per taxi seat in
+// the level). Only the first `previewSize` people are shown; the first
+// `headSize` of those are the head, and any head person may board a matching
+// taxi. Removing someone shifts everyone behind forward, which may bring a new
+// person into the visible preview.
 export class Queue {
-  constructor({ previewSize, headSize, colorSource, rng = Math.random, initialColors = [] }) {
+  constructor({ people, previewSize, headSize }) {
     this.previewSize = previewSize;
     this.headSize = Math.min(headSize, previewSize);
-    this.colorSource = colorSource;
-    this.rng = rng;
-    this._nextId = 0;
-    this.people = [];
-    for (let i = 0; i < previewSize; i++) {
-      const color = i < initialColors.length ? initialColors[i] : this._randomColor();
-      this.people.push(this._makePerson(color));
-    }
-  }
-
-  _randomColor() {
-    const colors = this.colorSource();
-    return colors[Math.floor(this.rng() * colors.length)];
-  }
-
-  _makePerson(color) {
-    return { id: this._nextId++, color };
+    this.upcoming = people.map((color, id) => ({ id, color }));
   }
 
   peek() {
-    return this.people.slice();
+    return this.upcoming.slice(0, this.previewSize);
   }
 
   head() {
-    return this.people.slice(0, this.headSize);
+    return this.upcoming.slice(0, this.headSize);
   }
 
-  // Removes the person at `index`, shifts the rest forward, and appends a new
-  // person at the tail. Returns { removed, spawned }.
+  remaining() {
+    return this.upcoming.length;
+  }
+
+  // Removes the person at visible `index`. Returns { removed, spawned } where
+  // `spawned` is the person newly revealed at the tail of the preview, or null.
   removeAt(index) {
-    const [removed] = this.people.splice(index, 1);
-    const spawned = this._makePerson(this._randomColor());
-    this.people.push(spawned);
-    return { removed, spawned };
+    const [removed] = this.upcoming.splice(index, 1);
+    return { removed, spawned: this.upcoming[this.previewSize - 1] ?? null };
   }
 }

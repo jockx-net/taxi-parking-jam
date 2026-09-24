@@ -11,12 +11,7 @@ function taxi(id, color, x, y, dir, capacity = 2) {
 
 function setup({ taxis, queueColors, slots = 2, headSize = 3, previewSize = queueColors.length }) {
   const grid = new GridLot(4, 4, taxis);
-  const queue = new Queue({
-    previewSize,
-    headSize,
-    colorSource: () => [...new Set(taxis.map((t) => t.color))],
-    initialColors: queueColors,
-  });
+  const queue = new Queue({ people: queueColors, previewSize, headSize });
   return new Level({ grid, queue, slots });
 }
 
@@ -62,7 +57,6 @@ test("boarding cascades and reports seats, spawned people and departure", () => 
   const events = level.selectTaxi("a");
   assert.deepEqual(events.map((e) => e.type), ["enter", "board", "board", "depart"]);
   assert.equal(events[2].seats, 2);
-  assert.ok(events[1].spawned.id > 2);
   assert.equal(level.status, "won");
   assert.equal(level.slots[0], null);
 });
