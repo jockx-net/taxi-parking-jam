@@ -49,6 +49,10 @@ filled, and it leaves. Clear every taxi in the lot to win.
   really reached its bay (boarding people walk to the taxi only then).
 - Win or lose is announced only once all movement has finished.
 
+- Road paint follows Polish one-way conventions: white P-8a straight-ahead
+  arrows along every lane (no centre line, which would suggest two-way traffic)
+  and a P-12 stop line where the right-hand lane meets the main road.
+
 ## Boarding slots
 
 - The level defines N slots. Tapping a free taxi sends it into an empty slot.

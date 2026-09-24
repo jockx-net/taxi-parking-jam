@@ -115,37 +115,33 @@ export class GameScene extends Phaser.Scene {
     const pavement = this.add.graphics().setDepth(-7);
     pavement.fillStyle(0x858a94, 1).fillRoundedRect(left + ROAD_W / 2 + 4, top + ROAD_W / 2 + 4, ringW - ROAD_W - 8, ringH - ROAD_W - 8, 22);
 
+    // Road paint for one-way streets: white P-8a straight-ahead arrows along every
+    // lane (no centre line, which would suggest two-way traffic) and a P-12 stop
+    // line where the right-hand lane meets the main road.
     const marks = this.add.graphics().setDepth(-5);
-    marks.lineStyle(3, 0xffffff, 0.35);
-    const dashed = (x1, y1, x2, y2) => {
-      const len = Math.hypot(x2 - x1, y2 - y1);
-      const ux = (x2 - x1) / len;
-      const uy = (y2 - y1) / len;
-      for (let d = 0; d < len; d += 34) {
-        const e = Math.min(d + 18, len);
-        marks.lineBetween(x1 + ux * d, y1 + uy * d, x1 + ux * e, y1 + uy * e);
-      }
+    marks.fillStyle(0xffffff, 0.88);
+    const arrow = (x, y, angle) => {
+      // long slim shaft narrowing to the tail, triangular head; pointing along +x before rotation
+      const local = [
+        [-32, -3.5], [8, -6], [8, -14], [32, 0], [8, 14], [8, 6], [-32, 3.5],
+      ];
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      marks.fillPoints(local.map(([px, py]) => ({ x: x + px * cos - py * sin, y: y + px * sin + py * cos })), true);
     };
-    dashed(right - 40, bottom, left + 40, bottom);
-    dashed(left, bottom - 40, left, top + 40);
-    dashed(left + 40, top, right - 40, top);
-    dashed(right, top + 40, right, MAIN_Y - 30);
-    dashed(W, MAIN_Y, 90, MAIN_Y);
+    const WEST = Math.PI;
+    const NORTH = -Math.PI / 2;
+    const EAST = 0;
+    const SOUTH = Math.PI / 2;
+    for (let x = right - 120; x > left + 60; x -= 150) arrow(x, bottom, WEST);
+    for (let y = bottom - 120; y > top + 60; y -= 150) arrow(left, y, NORTH);
+    for (let x = left + 120; x < right - 60; x += 150) arrow(x, top, EAST);
+    for (let y = top + 110; y < MAIN_Y - 90; y += 150) arrow(right, y, SOUTH);
+    for (let x = W - 60; x > 110; x -= 150) arrow(x, MAIN_Y, WEST);
 
-    marks.fillStyle(0xf5c518, 0.85);
-    const arrow = (x, y, dir) => {
-      const v = { west: [-1, 0], east: [1, 0], north: [0, -1], south: [0, 1] }[dir];
-      const [dx, dy] = v;
-      marks.fillTriangle(x + dx * 11, y + dy * 11, x - dx * 7 - dy * 9, y - dy * 7 + dx * 9, x - dx * 7 + dy * 9, y - dy * 7 - dx * 9);
-    };
-    for (let x = right - 90; x > left + 60; x -= 130) arrow(x, bottom, "west");
-    for (let y = bottom - 90; y > top + 60; y -= 130) arrow(left, y, "north");
-    for (let x = left + 90; x < right - 60; x += 130) arrow(x, top, "east");
-    for (let y = top + 90; y < MAIN_Y - 40; y += 130) arrow(right, y, "south");
-    for (let x = W - 40; x > 90; x -= 130) arrow(x, MAIN_Y, "west");
+    marks.fillRect(right - ROAD_W / 2 + 3, MAIN_Y - ROAD_W / 2 - 22, ROAD_W - 6, 9); // P-12 stop line
 
     this.add.text(46, MAIN_Y, "EXIT", { ...TEXT, fontSize: "20px", fontStyle: "bold", color: "#f5c518" }).setOrigin(0.5).setDepth(-4);
-    marks.fillTriangle(12, MAIN_Y, 26, MAIN_Y - 9, 26, MAIN_Y + 9);
   }
 
   buildHud() {
