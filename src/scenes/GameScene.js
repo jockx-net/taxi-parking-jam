@@ -133,11 +133,13 @@ export class GameScene extends Phaser.Scene {
       }
     };
     dashAlong(new RoadPath([{ x: W / 2, y: bottom }, { x: left, y: bottom }, { x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: W / 2, y: bottom }], 60));
-    dashAlong(new RoadPath([{ x: right, y: bottom - 60 }, { x: right, y: MAIN_Y }], 1));
+    const mainEdge = MAIN_Y - ROAD_W / 2; // northern edge of the main road
+    dashAlong(new RoadPath([{ x: right, y: bottom - 60 }, { x: right, y: mainEdge - 70 }], 1));
+    marks.lineBetween(right, mainEdge - 70, right, mainEdge); // solid approach line up to the main road's edge
     dashAlong(new RoadPath([{ x: W, y: MAIN_Y }, { x: 0, y: MAIN_Y }], 1));
 
     marks.fillStyle(0xffffff, 0.9);
-    marks.fillRect(right - ROAD_W / 2 + 3, MAIN_Y - ROAD_W / 2 - 22, ROAD_W / 2 - 6, 9); // stop line
+    marks.fillRect(right - ROAD_W / 2 + 3, mainEdge - 9, ROAD_W / 2 - 6, 9); // stop line, flush with the main road's edge
   }
 
   buildHud() {
