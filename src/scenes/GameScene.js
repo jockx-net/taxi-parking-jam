@@ -332,7 +332,10 @@ export class GameScene extends Phaser.Scene {
   handleEvents(events) {
     for (const e of events) {
       if (e.type === "enter") this.startVehicle(e);
-      else this.ceremony.push(e);
+      else {
+        if (e.type === "depart") this.vehicles.get(e.taxiId).logicalDone = true; // its bay may now be reused
+        this.ceremony.push(e);
+      }
     }
     this.pumpCeremony();
   }
@@ -364,10 +367,27 @@ export class GameScene extends Phaser.Scene {
     return vehicle.path.length;
   }
 
-  startVehicle({ taxiId, slot }) {
+  // The rules hand out the lowest free slot the instant a taxi fills, but that
+  // taxi may still be pulling out of its bay. Pick the bay to actually use: never
+  // one whose taxi has not yet been sequenced out (still waiting for passengers,
+  // or finishing later in the same batch of events), and the one that is or will
+  // be free soonest.
+  chooseBay() {
+    let best = null;
+    this.level.slots.forEach((_, i) => {
+      const last = this.lastInSlot[i];
+      if (last && !last.hasLeftBay() && !last.logicalDone) return;
+      const rank = !last || last.hasLeftBay() ? 0 : last.state === "reversing" || last.state === "pivoting" ? 1 : last.state === "parked" ? 2 : 3;
+      if (!best || rank < best.rank) best = { bay: i, rank };
+    });
+    return best.bay;
+  }
+
+  startVehicle({ taxiId }) {
     const taxi = this.level.grid.getTaxi(taxiId);
     const sprite = this.taxiSprites.get(taxiId).setDepth(30).clearTint().setAlpha(1);
     sprite.disableInteractive();
+    const slot = this.chooseBay();
     const from = this.taxiCenter(taxi);
     const entry = this.trackEntry(taxi, from);
     const path = new RoadPath(this.routeFor(taxi, slot), 30);
@@ -387,6 +407,7 @@ export class GameScene extends Phaser.Scene {
     });
     vehicle.gateS = this.gateFor(vehicle, slot);
     this.lastInSlot[slot] = vehicle;
+    vehicle.bay = slot;
     vehicle.arrived = new Promise((resolve) => {
       vehicle.onArrived = () => {
         this.showSeatDots(taxi, slot);
@@ -423,8 +444,10 @@ export class GameScene extends Phaser.Scene {
     this.pumping = false;
   }
 
-  async animBoard({ taxiId, slot, personId, seats, spawned }) {
-    await this.vehicles.get(taxiId).arrived;
+  async animBoard({ taxiId, personId, seats, spawned }) {
+    const vehicle = this.vehicles.get(taxiId);
+    await vehicle.arrived;
+    const slot = vehicle.bay;
     const sprite = this.personSprites.get(personId);
     this.personSprites.delete(personId);
     this.displayQueue.splice(this.displayQueue.indexOf(personId), 1);
@@ -461,7 +484,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   // A full taxi reverses out of its bay, turns to face the exit and drives west.
-  startDeparture({ taxiId, slot }) {
+  startDeparture({ taxiId }) {
+    const slot = this.vehicles.get(taxiId).bay;
     const view = this.slotViews[slot];
     view.dots.forEach((d) => d.destroy());
     view.dots = [];
