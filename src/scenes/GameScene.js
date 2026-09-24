@@ -138,8 +138,7 @@ export class GameScene extends Phaser.Scene {
     marks.lineBetween(right, mainEdge - 70, right, mainEdge); // solid approach line up to the main road's edge
     dashAlong(new RoadPath([{ x: W, y: MAIN_Y }, { x: 0, y: MAIN_Y }], 1));
 
-    marks.fillStyle(0xffffff, 0.9);
-    marks.fillRect(right - ROAD_W / 2 + 3, mainEdge - 9, ROAD_W / 2 - 6, 9); // stop line, flush with the main road's edge
+    marks.lineBetween(right - ROAD_W / 2 + 3, mainEdge - 1.5, right, mainEdge - 1.5); // stop line: same paint as the centre line, flush with the main road's edge and meeting the centre line
   }
 
   buildHud() {
