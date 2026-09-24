@@ -77,7 +77,6 @@ export class GameScene extends Phaser.Scene {
     this.buildSlots();
     this.buildQueue();
     this.buildTaxis();
-    if (this.levelIndex === 0) this.buildHint();
     this.refresh();
   }
 
@@ -148,17 +147,28 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildHud() {
-    const back = this.add.text(30, 40, "< Levels", { ...TEXT, fontSize: "26px" }).setInteractive({ useHandCursor: true });
-    back.on("pointerdown", () => this.scene.start("LevelSelect"));
-    this.add.text(W / 2, 40, this.config.name, { ...TEXT, fontSize: "40px", fontStyle: "bold" }).setOrigin(0.5);
-    this.taxisLeftText = this.add.text(W - 30, 40, "", { ...TEXT, fontSize: "26px" }).setOrigin(1, 0.5);
-    this.add
-      .text(W / 2, 80, `longer taxi = more seats   |   ${this.config.slots} slots   |   head ${this.config.queueHeadSize}`, {
-        ...TEXT,
-        fontSize: "22px",
-        color: "#9aa4b8",
-      })
-      .setOrigin(0.5);
+    this.buildBackButton(58, 46);
+    this.add.text(W / 2, 46, this.config.name, { ...TEXT, fontSize: "40px", fontStyle: "bold" }).setOrigin(0.5);
+  }
+
+  // Icon-only "back to levels" button in the usual mobile-game style: chunky
+  // rounded blue key with a highlight, a bottom lip and a white arrow that
+  // presses down when tapped.
+  buildBackButton(x, y) {
+    const g = this.add.graphics();
+    g.fillStyle(0x0f2a5e, 1).fillRoundedRect(-31, -25, 62, 62, 17); // bottom lip
+    g.fillStyle(0x2f6fdc, 1).fillRoundedRect(-31, -31, 62, 60, 17);
+    g.fillStyle(0x6aa4ff, 1).fillRoundedRect(-26, -28, 52, 26, 13); // top highlight
+    g.lineStyle(3, 0x163a7a, 1).strokeRoundedRect(-31, -31, 62, 60, 17);
+    const arrow = [[-15, -1], [1, -16], [1, -8], [15, -8], [15, 6], [1, 6], [1, 14]];
+    g.fillStyle(0xffffff, 1).lineStyle(4, 0x163a7a, 1);
+    g.fillPoints(arrow.map(([px, py]) => ({ x: px, y: py })), true);
+    g.strokePoints(arrow.map(([px, py]) => ({ x: px, y: py })), true);
+    const button = this.add.container(x, y, [g]).setSize(66, 66).setDepth(50);
+    button.setInteractive({ useHandCursor: true });
+    button.on("pointerdown", () => button.setScale(0.92));
+    button.on("pointerout", () => button.setScale(1));
+    button.on("pointerup", () => this.scene.start("LevelSelect"));
   }
 
   buildSlots() {
@@ -170,7 +180,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildQueue() {
-    this.add.text(W / 2, QUEUE_Y + 48, "queue", { ...TEXT, fontSize: "18px", color: "#7f8aa0" }).setOrigin(0.5);
     this.fenceBack = this.add.graphics().setDepth(4);
     this.fenceFront = this.add.graphics().setDepth(6);
 
@@ -237,18 +246,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  buildHint() {
-    this.add
-      .text(W / 2, 1259, "Tap a bright taxi: it drives round the one-way street to a slot. Longer taxis\nhave more seats. People not behind the fence board taxis of their color.", {
-        ...TEXT,
-        fontSize: "19px",
-        align: "center",
-        color: "#c9d3e6",
-        lineSpacing: 4,
-      })
-      .setOrigin(0.5);
-  }
-
   // ---- state presentation -------------------------------------------------
 
   refresh() {
@@ -269,8 +266,6 @@ export class GameScene extends Phaser.Scene {
         sprite.setTint(0x9aa0ae).setAlpha(0.92);
       }
     }
-    const left = this.level.grid.allTaxis().filter((t) => t.state !== "departed").length;
-    this.taxisLeftText.setText(`Taxis left: ${left}`);
   }
 
   // ---- input --------------------------------------------------------------

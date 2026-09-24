@@ -109,6 +109,9 @@ filled, and it leaves. Clear every taxi in the lot to win.
 ## Presentation
 
 - Portrait 720x1280 canvas, FIT-scaled and centered.
+- In-game text is limited to the level name and the "P" on the bays: no hints,
+  counters, labels or difficulty descriptions. Going back to the level list uses
+  an icon-only, mobile-game-style button (chunky blue key with a white arrow).
 - One reference taxi size everywhere: a lot cell is the same size in every
   level and taxis keep that scale in the lot, on the road and in the bays. Small
   lots are simply drawn smaller, inside a ring road that is never narrower than
