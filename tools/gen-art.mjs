@@ -3,6 +3,7 @@
 // them to face other directions). People are 96x96 cartoon figures.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { FRAME_NAMES, FRAME_SIZE, SHEET_COLS, SHEET_ROWS } from "../src/scenes/personFrames.js";
 import { fileURLToPath } from "node:url";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "../public/assets");
@@ -78,28 +79,107 @@ function taxiSvg(color, length) {
 `;
 }
 
-function personSvg(color) {
+function outlined(d, base, dark, width) {
+  return `<path d="${d}" fill="none" stroke="${dark}" stroke-width="${width + 3}" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="${d}" fill="none" stroke="${base}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+// One 96x96 person frame. view: front | back | side (facing left). pose: walk
+// phase in radians (or null) and an optional idle pose name.
+function personFrame(color, view, phase, idle) {
   const base = COLORS[color];
   const dark = shade(base, -0.35);
   const skin = "#ffd6ad";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-  <ellipse cx="48" cy="90" rx="26" ry="5" fill="#000" opacity="0.25"/>
-  <rect x="20" y="52" width="56" height="38" rx="18" fill="${base}" stroke="${dark}" stroke-width="4"/>
-  <circle cx="18" cy="70" r="9" fill="${skin}" stroke="${dark}" stroke-width="3"/>
-  <circle cx="78" cy="70" r="9" fill="${skin}" stroke="${dark}" stroke-width="3"/>
-  <circle cx="48" cy="34" r="27" fill="${skin}" stroke="${dark}" stroke-width="4"/>
-  <path d="M23 26 Q23 3 48 3 Q73 3 73 26 Z" fill="${base}" stroke="${dark}" stroke-width="4" stroke-linejoin="round"/>
-  <rect x="15" y="22" width="66" height="10" rx="5" fill="${base}" stroke="${dark}" stroke-width="4"/>
-  <path d="M27 20 Q48 12 69 20" fill="none" stroke="${dark}" stroke-width="3" opacity="0.45" stroke-linecap="round"/>
-  <circle cx="38" cy="38" r="4" fill="#1d2230"/>
-  <circle cx="58" cy="38" r="4" fill="#1d2230"/>
-  <circle cx="39.5" cy="36.5" r="1.4" fill="#fff"/>
-  <circle cx="59.5" cy="36.5" r="1.4" fill="#fff"/>
-  <path d="M39 49 Q48 57 57 49" fill="none" stroke="#1d2230" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="30" cy="46" r="4.5" fill="#ff8f8f" opacity="0.45"/>
-  <circle cx="66" cy="46" r="4.5" fill="#ff8f8f" opacity="0.45"/>
-</svg>
-`;
+  const skinDark = "#b98b64";
+  const pants = "#3a4560";
+  const pantsFar = "#2b3348";
+  const shoe = "#1f232b";
+  const hair = "#5a3a22";
+  const s = phase === null ? 0 : Math.sin(phase);
+  const bob = phase === null ? 0 : -Math.abs(s) * 2;
+  const out = [`<ellipse cx="48" cy="92" rx="20" ry="4.5" fill="#000" opacity="0.25"/>`];
+
+  const hand = (x, y) => `<circle cx="${x}" cy="${y}" r="4.6" fill="${skin}" stroke="${skinDark}" stroke-width="1.5"/>`;
+  const hat = (cx, brimL, brimR) =>
+    `<path d="M${cx - 15} ${24 + bob} Q${cx - 15} ${4 + bob} ${cx} ${4 + bob} Q${cx + 15} ${4 + bob} ${cx + 15} ${24 + bob} Z" fill="${base}" stroke="${dark}" stroke-width="3" stroke-linejoin="round"/>` +
+    `<rect x="${brimL}" y="${21 + bob}" width="${brimR - brimL}" height="8" rx="4" fill="${base}" stroke="${dark}" stroke-width="3"/>`;
+
+  if (view === "side") {
+    const A = phase === null ? 0 : 30 * s;
+    const leg = (angle, colour, dx) =>
+      `<g transform="rotate(${angle} 49 ${68 + bob})"><rect x="${44.5 + dx}" y="${68 + bob}" width="9" height="19" rx="4" fill="${colour}" stroke="${dark}" stroke-width="1.5"/>` +
+      `<ellipse cx="${43 + dx}" cy="${88 + bob}" rx="7.5" ry="3.8" fill="${shoe}"/></g>`;
+    const arm = (angle, dxs) =>
+      `<g transform="rotate(${angle} 49 ${53 + bob})">${outlined(`M49 ${53 + bob} L49 ${71 + bob}`, base, dark, 8)}${hand(49, 73 + bob)}</g>`;
+    out.push(leg(A, pantsFar, 0)); // far leg first (behind)
+    out.push(arm(A * 0.9, 0));
+    out.push(leg(-A, pants, 0));
+    out.push(`<rect x="40" y="${48 + bob}" width="18" height="23" rx="8" fill="${base}" stroke="${dark}" stroke-width="3"/>`);
+    out.push(arm(-A * 0.9, 0));
+    out.push(`<circle cx="47" cy="${32 + bob}" r="16" fill="${skin}" stroke="${skinDark}" stroke-width="2"/>`);
+    out.push(`<path d="M55 ${27 + bob} Q64 ${34 + bob} 55 ${44 + bob} Q60 ${34 + bob} 55 ${27 + bob}Z" fill="${hair}"/>`);
+    out.push(`<circle cx="31.5" cy="${37 + bob}" r="3.2" fill="${skin}" stroke="${skinDark}" stroke-width="1.5"/>`); // nose
+    out.push(`<circle cx="39" cy="${34 + bob}" r="2.4" fill="#1d2230"/><circle cx="39.6" cy="${33.3 + bob}" r="0.8" fill="#fff"/>`);
+    out.push(`<path d="M36 ${44 + bob} Q40 ${46 + bob} 43 ${44 + bob}" fill="none" stroke="#1d2230" stroke-width="2" stroke-linecap="round"/>`);
+    out.push(hat(48, 22, 62));
+    return out.join("\n");
+  }
+
+  const back = view === "back";
+  const liftL = phase === null ? 0 : Math.max(0, s) * 5;
+  const liftR = phase === null ? 0 : Math.max(0, -s) * 5;
+  const legL = `<rect x="38" y="${68 + bob}" width="9.5" height="${19 - liftL}" rx="4" fill="${pants}" stroke="${dark}" stroke-width="1.5"/><ellipse cx="42.7" cy="${88 + bob - liftL}" rx="6.5" ry="3.6" fill="${shoe}"/>`;
+  const legR = `<rect x="48.5" y="${68 + bob}" width="9.5" height="${19 - liftR}" rx="4" fill="${pants}" stroke="${dark}" stroke-width="1.5"/><ellipse cx="53.3" cy="${88 + bob - liftR}" rx="6.5" ry="3.6" fill="${shoe}"/>`;
+  const swing = phase === null ? 0 : 6 * s;
+  let armL = outlined(`M33 ${53 + bob} L${30} ${71 + bob + swing}`, base, dark, 8) + hand(30, 73 + bob + swing);
+  let armR = outlined(`M63 ${53 + bob} L${66} ${71 + bob - swing}`, base, dark, 8) + hand(66, 73 + bob - swing);
+  let eyeShift = 0;
+  let eyeDrop = 0;
+  let extra = "";
+  if (idle === "lookL") eyeShift = -6;
+  if (idle === "lookR") eyeShift = 6;
+  if (idle === "head0" || idle === "head1") {
+    const w = idle === "head0" ? 0 : 4;
+    armR = outlined(`M63 ${53 + bob} L72 40 L${63 + w} 21`, base, dark, 8) + hand(63 + w, 20);
+  }
+  if (idle === "belly0" || idle === "belly1") {
+    const w = idle === "belly0" ? 0 : 3;
+    armR = outlined(`M63 ${53 + bob} L69 63 L${55 - w} ${60 + w}`, base, dark, 8) + hand(54 - w, 60 + w);
+  }
+  if (idle === "watch0" || idle === "watch1") {
+    const up = idle === "watch0" ? 0 : -3;
+    armL = outlined(`M33 ${53 + bob} L24 62 L40 ${50 + up}`, base, dark, 8) + hand(41, 49 + up) +
+      `<circle cx="36" cy="${53 + up}" r="3.6" fill="#fff" stroke="#20232b" stroke-width="1.6"/><path d="M36 ${53 + up} L36 ${51 + up} M36 ${53 + up} L37.5 ${53 + up}" stroke="#20232b" stroke-width="1"/>`;
+    eyeDrop = 3;
+  }
+
+  const face = back
+    ? `<path d="M32 ${28 + bob} Q48 ${52 + bob} 64 ${28 + bob} L64 ${26 + bob} L32 ${26 + bob}Z" fill="${hair}"/>`
+    : `<circle cx="${41 + eyeShift}" cy="${37 + eyeDrop + bob}" r="2.6" fill="#1d2230"/><circle cx="${55 + eyeShift}" cy="${37 + eyeDrop + bob}" r="2.6" fill="#1d2230"/>` +
+      `<circle cx="${41.8 + eyeShift}" cy="${36.2 + eyeDrop + bob}" r="0.9" fill="#fff"/><circle cx="${55.8 + eyeShift}" cy="${36.2 + eyeDrop + bob}" r="0.9" fill="#fff"/>` +
+      `<path d="M${42 + eyeShift * 0.6} ${44 + bob} Q${48 + eyeShift * 0.6} ${49 + bob} ${54 + eyeShift * 0.6} ${44 + bob}" fill="none" stroke="#1d2230" stroke-width="2.2" stroke-linecap="round"/>`;
+
+  out.push(legL, legR);
+  if (back) out.push(armL, armR);
+  out.push(`<rect x="34" y="${48 + bob}" width="28" height="23" rx="9" fill="${base}" stroke="${dark}" stroke-width="3"/>`);
+  if (!back) out.push(armL);
+  out.push(`<circle cx="48" cy="${32 + bob}" r="16" fill="${skin}" stroke="${skinDark}" stroke-width="2"/>`);
+  out.push(face);
+  out.push(hat(48, 27, 69));
+  if (!back) out.push(armR);
+  return out.join("\n");
+}
+
+function personSheet(color) {
+  const frames = FRAME_NAMES.map((name) => {
+    const m = /^(down|up|left)(\d)$/.exec(name);
+    if (m) return personFrame(color, m[1] === "down" ? "front" : m[1] === "up" ? "back" : "side", (Number(m[2]) * Math.PI) / 2, null);
+    return personFrame(color, "front", null, name === "stand" ? null : name);
+  });
+  const W = SHEET_COLS * FRAME_SIZE;
+  const H = SHEET_ROWS * FRAME_SIZE;
+  const cells = frames.map((f, i) => `<g transform="translate(${(i % SHEET_COLS) * FRAME_SIZE} ${Math.floor(i / SHEET_COLS) * FRAME_SIZE})">${f}</g>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n${cells.join("\n")}\n</svg>\n`;
 }
 
 const bay = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="220" viewBox="0 0 150 220">
@@ -140,7 +220,7 @@ const logo = `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="340" v
 
 for (const color of Object.keys(COLORS)) {
   for (let length = 1; length <= 3; length++) writeFileSync(join(OUT, `taxi_${color}_${length}.svg`), taxiSvg(color, length));
-  writeFileSync(join(OUT, `person_${color}.svg`), personSvg(color));
+  writeFileSync(join(OUT, `person_${color}.svg`), personSheet(color));
 }
 writeFileSync(join(OUT, "bay.svg"), bay);
 writeFileSync(join(OUT, "bg.svg"), bg);

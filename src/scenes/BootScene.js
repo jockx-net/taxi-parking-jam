@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { loadArt } from "./art.js";
+import { addPersonFrames, loadArt } from "./art.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -15,6 +15,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    addPersonFrames(this.textures);
     this.scene.start("Menu");
   }
 }

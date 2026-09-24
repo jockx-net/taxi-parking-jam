@@ -84,7 +84,12 @@ filled, and it leaves. Clear every taxi in the lot to win.
   person into the head and reveal another at the end of the visible preview.
 - People who cannot board yet (everyone behind the head) stand inside a picket
   fence; the fence shrinks as the queue shortens. There is no other head marker.
-- Boarding is animated (person walks to the taxi, seat fills, taxi departs).
+- People are animated: they face the way they walk (down/up/left/right) with
+  swinging arms and legs, and fidget while they wait (look around, scratch
+  their head or belly, check their watch).
+- Boarding is animated: each person walks to the taxi's right-hand side and
+  steps in through a sliding door that opens for the first passenger (a few
+  people can be walking at once). The door closes before the taxi departs.
 
 ## End conditions
 

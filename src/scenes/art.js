@@ -1,5 +1,6 @@
+import { FRAME_NAMES, FRAME_SIZE, SHEET_COLS, SHEET_ROWS } from "./personFrames.js";
+
 export const CELL_PX = 128; // texture pixels per lot cell
-export const PERSON_PX = 96;
 export const COLOR_NAMES = ["red", "blue", "green", "yellow", "purple", "orange"];
 
 export function taxiKey(color, length) {
@@ -17,7 +18,7 @@ export function loadArt(scene) {
     for (let length = 1; length <= 3; length++) {
       scene.load.svg(taxiKey(color, length), `assets/${taxiKey(color, length)}.svg`, { width: length * CELL_PX, height: CELL_PX });
     }
-    scene.load.svg(personKey(color), `assets/${personKey(color)}.svg`, { width: PERSON_PX, height: PERSON_PX });
+    scene.load.svg(personKey(color), `assets/${personKey(color)}.svg`, { width: SHEET_COLS * FRAME_SIZE, height: SHEET_ROWS * FRAME_SIZE });
   }
   scene.load.svg("bay", "assets/bay.svg", { width: 150, height: 220 });
   scene.load.svg("bg", "assets/bg.svg", { width: 720, height: 1280 });
@@ -26,4 +27,12 @@ export function loadArt(scene) {
 
 export function addBackground(scene) {
   return scene.add.image(0, 0, "bg").setOrigin(0).setDepth(-10);
+}
+
+// Person textures are sprite sheets; register every frame by name.
+export function addPersonFrames(textures) {
+  for (const color of COLOR_NAMES) {
+    const texture = textures.get(personKey(color));
+    FRAME_NAMES.forEach((name, i) => texture.add(name, 0, (i % SHEET_COLS) * FRAME_SIZE, Math.floor(i / SHEET_COLS) * FRAME_SIZE, FRAME_SIZE, FRAME_SIZE));
+  }
 }
