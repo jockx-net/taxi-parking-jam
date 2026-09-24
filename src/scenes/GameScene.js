@@ -170,7 +170,7 @@ export class GameScene extends Phaser.Scene {
 
   buildHint() {
     this.add
-      .text(W / 2, 1160, "Tap a bright taxi to send it to a slot.\nPeople in the HEAD board taxis of their color.\nFill every taxi to clear the lot!", {
+      .text(W / 2, 1205, "Tap a bright taxi to send it to a slot.\nPeople in the HEAD board taxis of their color.\nFill every taxi to clear the lot!", {
         ...TEXT,
         fontSize: "24px",
         align: "center",
