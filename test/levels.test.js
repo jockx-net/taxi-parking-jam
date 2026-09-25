@@ -11,8 +11,8 @@ const configs = readdirSync(dir)
   .sort()
   .map((f) => JSON.parse(readFileSync(new URL(f, dir), "utf8")));
 
-test("there are at least 20 levels", () => {
-  assert.ok(configs.length >= 20);
+test("there are 100 levels", () => {
+  assert.equal(configs.length, 100);
 });
 
 for (const config of configs) {

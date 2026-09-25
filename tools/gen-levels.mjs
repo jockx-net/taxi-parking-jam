@@ -59,12 +59,13 @@ function waveRow(n) {
   const block = Math.floor((n - 21) / 10);
   const pos = (n - 21) % 10;
   const size = [6, 7, 8][(pos + block) % 3];
-  const density = Math.min(0.47, 0.3 + 0.013 * pos + 0.012 * block);
+  const density = Math.min(0.44, 0.3 + 0.013 * pos + 0.012 * block);
   const taxis = Math.min(30, Math.max(8, Math.round(size * size * density)));
-  const colors = Math.min(6, 3 + Math.floor(block / 2) + (pos >= 5 ? 1 : 0));
   const slots = block >= 3 && pos >= 7 ? 2 : 3;
-  const head = Math.max(slots === 2 ? 3 : 2, 4 - Math.floor(block / 3) - (pos >= 6 ? 1 : 0)); // two bays with a tiny head is unwinnable
-  const minDepth = Math.min(11, 3 + block + Math.floor(pos / 3));
+  // two bays leave little room for error: give them a wide head and fewer colours
+  const colors = Math.min(slots === 2 ? 4 : 6, 3 + Math.floor(block / 2) + (pos >= 5 ? 1 : 0));
+  const head = Math.max(slots === 2 ? 4 : 3, 4 - Math.floor(block / 3) - (pos >= 6 ? 1 : 0));
+  const minDepth = Math.min(8, 3 + block + Math.floor(pos / 3));
   return [size, taxis, colors, slots, head, minDepth];
 }
 for (let n = 21; n <= 100; n++) TABLE.push(waveRow(n));
