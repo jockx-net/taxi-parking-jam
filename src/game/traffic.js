@@ -276,9 +276,21 @@ export class Traffic {
     for (const o of this.vehicles) {
       if (o === v || o.state === "gone") continue;
       if (circlesOverlap(zone, o.circles(), 0)) return false;
-      if (!o.moving || !o.path || o.state === "reversing" || o.state === "pivoting" || o.isStationary()) continue; // a queued taxi is not approaching
+      // Where will `o` drive next? A taxi still reversing or pivoting is about to
+      // drive off along its leave path, right through this taxi's swing area.
+      const departing = o.state === "reversing" || o.state === "pivoting";
+      if (o.state === "reversing" && o.s === 0) {
+        // also waiting to pull out: if our swing areas overlap, the older one goes first
+        const theirs = o.reversePath.poseAt(o.reversePath.length);
+        const theirR = o.dims(o.scaleTo).length / 2 + 20;
+        if (o.priority < v.priority && Math.hypot(theirs.x - end.x, theirs.y - end.y) < theirR + zone[0].r) return false;
+        continue;
+      }
+      const path = departing ? o.leavePath : o.path;
+      if (!o.moving || !path || (o.state === "driving" && o.isStationary())) continue; // a queued taxi is not approaching; a departing one always is
+      const from = departing ? 0 : o.s;
       for (let d = 10; d <= 200; d += 10) {
-        const pose = o.path.poseAt(o.s + d);
+        const pose = path.poseAt(from + d);
         if (circlesOverlap(zone, o.circlesAt({ x: pose.x, y: pose.y, heading: pose.heading }, o.scale), 0)) return false;
       }
     }

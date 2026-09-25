@@ -216,3 +216,43 @@ test("a taxi is not held up for ever by an older taxi that is merely parked in i
   run(traffic, 15000);
   assert.equal(passer.state, "parked");
 });
+
+test("two taxis leaving adjacent bays at nearly the same time never block each other", () => {
+  const MAIN_LANE = 841;
+  const BAY_Y = 1004;
+  const scale = 58 / 128;
+  const bayX = (i) => 160 + i * 160;
+  for (const [startNear, startFar] of [[600, 0], [300, 0], [100, 0], [0, 0], [0, 600], [0, 1200]]) {
+    for (const [lenNear, lenFar] of [[2, 1], [1, 2], [3, 3]]) {
+      const traffic = new Traffic();
+      const make = (id, priority, bay, length) => {
+        const path = new RoadPath([P(bayX(bay), BAY_Y), P(bayX(bay), BAY_Y + 0.6)], 1);
+        const v = new Vehicle({ id, priority, path, lengthCells: length, cellPx: 128, scaleFrom: scale, scaleTo: scale });
+        v.state = "parked";
+        v.x = bayX(bay);
+        v.y = BAY_Y;
+        v.heading = Math.PI / 2;
+        return v;
+      };
+      const depart = (v, bay) =>
+        v.beginDeparture({
+          reversePath: new RoadPath([P(bayX(bay), BAY_Y), P(bayX(bay), MAIN_LANE)]),
+          leavePath: new RoadPath([P(bayX(bay), MAIN_LANE), P(-320, MAIN_LANE)]),
+          pivotTarget: Math.PI,
+        });
+      const near = make("near", 1, 0, lenNear);
+      const far = make("far", 2, 1, lenFar);
+      traffic.add(near);
+      traffic.add(far);
+      let started = [false, false];
+      let t = 0;
+      for (; t < 9000 && !(near.state === "gone" && far.state === "gone"); t += 16) {
+        if (!started[0] && t >= startNear) (depart(near, 0), (started[0] = true));
+        if (!started[1] && t >= startFar) (depart(far, 1), (started[1] = true));
+        traffic.step(16);
+      }
+      assert.ok(near.state === "gone" && far.state === "gone", `near ${startNear}ms/far ${startFar}ms, lengths ${lenNear}/${lenFar}`);
+      assert.ok(t < 8000, "they should clear well before the safety timeout");
+    }
+  }
+});
