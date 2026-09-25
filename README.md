@@ -49,3 +49,19 @@ follow length (`seatsForLength`: length + 1). The `queue` holds exactly one
 person per seat, so the game is a deterministic
 perfect-information puzzle. Difficulty knobs: `slots`, `queueHeadSize`, grid
 size, taxi count and colors.
+
+## License
+
+Copyright (C) 2026 Mateusz Pietryga
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for details.
+
+Third-party components keep their own licenses: Phaser (MIT) and the Lilita One
+font (SIL Open Font License 1.1).
