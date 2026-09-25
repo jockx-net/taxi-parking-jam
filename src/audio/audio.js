@@ -12,13 +12,29 @@ class GameAudio {
     this.nextBarTime = 0;
     this.lastStep = 0;
     this.engine = null;
+    this.muted = false;
+    try {
+      this.muted = localStorage.getItem("muted") === "1";
+    } catch {
+      // storage unavailable: start unmuted
+    }
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    try {
+      localStorage.setItem("muted", muted ? "1" : "0");
+    } catch {
+      // not remembered
+    }
+    if (this.master) this.master.gain.value = muted ? 0 : 0.8;
   }
 
   attach(sound) {
     if (this.ctx || !sound || !sound.context) return;
     this.ctx = sound.context;
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.8;
+    this.master.gain.value = this.muted ? 0 : 0.8;
     this.master.connect(this.ctx.destination);
     this.music = this.ctx.createGain();
     this.music.gain.value = 0.55;

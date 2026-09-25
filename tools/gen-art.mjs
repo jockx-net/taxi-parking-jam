@@ -210,8 +210,6 @@ const bg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" vi
 `;
 
 const logo = `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="340" viewBox="0 0 560 340">
-  <text x="280" y="92" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="84" fill="#f5c518" stroke="#20232b" stroke-width="8" paint-order="stroke">TAXI</text>
-  <text x="280" y="170" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="64" fill="#ffffff" stroke="#20232b" stroke-width="7" paint-order="stroke">PARKING JAM</text>
   <g transform="translate(152 190) scale(0.9)">
     ${taxiSvg("yellow", 2).replace(/<svg[^>]*>|<\/svg>/g, "")}
   </g>

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { addBackground } from "./art.js";
 import { LEVELS } from "../data/levels/index.js";
-import { addIconButton } from "./ui.js";
+import { addIconButton, addMuteButton, textStyle } from "./ui.js";
 
 export class ResultScene extends Phaser.Scene {
   constructor() {
@@ -16,8 +16,10 @@ export class ResultScene extends Phaser.Scene {
     const { width, height } = this.scale;
     addBackground(this);
     this.add
-      .text(width / 2, height * 0.3, "Lot cleared!", { fontFamily: "Arial", fontSize: "64px", color: "#2ecc71", fontStyle: "bold" })
+      .text(width / 2, height * 0.3, "Lot cleared!", textStyle(72, "#ffe14d", "#1d5c39"))
       .setOrigin(0.5);
+
+    addMuteButton(this, width - 58, 46);
 
     // icon buttons: replay, level list, and (biggest) on to the next level
     const y = height * 0.55;

@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { addBackground } from "./art.js";
 import { LEVELS } from "../data/levels/index.js";
 import { loadCleared } from "./progress.js";
-import { addIconButton } from "./ui.js";
+import { addIconButton, addMuteButton, textStyle } from "./ui.js";
 import { audio } from "../audio/audio.js";
 
 const PAGE_SIZE = 20; // 4 columns x 5 rows
@@ -23,11 +23,12 @@ export class LevelSelectScene extends Phaser.Scene {
 
   create() {
     const { width } = this.scale;
+    addMuteButton(this, width - 58, 46);
     const cleared = loadCleared();
     addBackground(this);
 
     this.add
-      .text(width / 2, 100, "Select Level", { fontFamily: "Arial", fontSize: "48px", color: "#ffffff", fontStyle: "bold" })
+      .text(width / 2, 100, "Select Level", textStyle(56))
       .setOrigin(0.5);
 
     const cols = 4;
@@ -41,8 +42,8 @@ export class LevelSelectScene extends Phaser.Scene {
       const y = 250 + Math.floor(slot / cols) * cell;
       const done = cleared.has(index);
       const button = this.add.rectangle(x, y, 120, 120, done ? 0x2e8b57 : 0x3b82f6).setStrokeStyle(4, done ? 0x1d5c39 : 0x1f4fa8).setInteractive({ useHandCursor: true });
-      this.add.text(x, y, String(index + 1), { fontFamily: "Arial", fontSize: "44px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
-      if (done) this.add.text(x + 44, y - 46, "\u2713", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff" }).setOrigin(0.5);
+      this.add.text(x, y, String(index + 1), textStyle(50)).setOrigin(0.5);
+      if (done) this.add.text(x + 44, y - 46, "\u2713", textStyle(30, "#ffffff", "#1d5c39")).setOrigin(0.5);
       button.on("pointerdown", () => {
         audio.play("click");
         this.scene.start("Game", { levelIndex: index });

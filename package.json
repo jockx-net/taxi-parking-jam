@@ -10,6 +10,7 @@
     "test": "node --test test/"
   },
   "dependencies": {
+    "@fontsource/lilita-one": "^5.3.0",
     "phaser": "^3.80.1"
   },
   "devDependencies": {

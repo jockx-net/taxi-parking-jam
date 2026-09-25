@@ -6,7 +6,7 @@ import { LEVELS } from "../data/levels/index.js";
 import { COLOR_HEX } from "../game/colors.js";
 import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
 import { PersonView } from "./People.js";
-import { addIconButton } from "./ui.js";
+import { addIconButton, addMuteButton, textStyle } from "./ui.js";
 import { audio } from "../audio/audio.js";
 import { markCleared } from "./progress.js";
 
@@ -31,7 +31,6 @@ const PERSON_SPEED = 0.3; // px per ms when walking to a taxi
 const BOARD_STAGGER = 230; // ms between people setting off for the same taxi
 const DIR_ANGLE = { right: 0, down: 90, left: 180, up: -90 };
 
-const TEXT = { fontFamily: "Arial", color: "#ffffff" };
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -151,8 +150,9 @@ export class GameScene extends Phaser.Scene {
 
   buildHud() {
     addIconButton(this, 58, 46, "back", () => this.scene.start("LevelSelect", { levelIndex: this.levelIndex }));
+    addMuteButton(this, W - 138, 46);
     addIconButton(this, W - 58, 46, "reset", () => this.scene.start("Game", { levelIndex: this.levelIndex }));
-    this.add.text(W / 2, 46, this.config.name, { ...TEXT, fontSize: "40px", fontStyle: "bold" }).setOrigin(0.5);
+    this.add.text(W / 2, 46, this.config.name, textStyle(44)).setOrigin(0.5);
   }
 
   buildSlots() {

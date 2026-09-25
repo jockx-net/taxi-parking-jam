@@ -2,6 +2,19 @@ import { audio } from "../audio/audio.js";
 
 const DARK = 0x163a7a;
 
+// Bulky display font (bundled, see main.js) with a dark outline and drop shadow.
+export const FONT = '"Lilita One", Arial, sans-serif';
+export function textStyle(size, color = "#ffffff", outline = "#163a7a") {
+  return {
+    fontFamily: FONT,
+    fontSize: `${size}px`,
+    color,
+    stroke: outline,
+    strokeThickness: Math.max(4, Math.round(size / 7)),
+    shadow: { offsetX: 0, offsetY: Math.max(3, Math.round(size / 12)), color: outline, blur: 0, fill: true, stroke: true },
+  };
+}
+
 const ICONS = {
   back(g) {
     const arrow = [[-15, -1], [1, -16], [1, -8], [15, -8], [15, 6], [1, 6], [1, 14]];
@@ -10,6 +23,22 @@ const ICONS = {
   next(g) {
     const arrow = [[15, -1], [-1, -16], [-1, -8], [-15, -8], [-15, 6], [-1, 6], [-1, 14]];
     fillOutlined(g, arrow);
+  },
+  sound(g) {
+    fillOutlined(g, [[-16, -6], [-8, -6], [2, -15], [2, 15], [-8, 6], [-16, 6]]);
+    for (const [r, width] of [[8, 4], [15, 4]]) {
+      for (const [w, color] of [[width + 4, DARK], [width, 0xffffff]]) {
+        g.lineStyle(w, color, 1).beginPath();
+        g.arc(2, 0, r, -0.9, 0.9, false);
+        g.strokePath();
+      }
+    }
+  },
+  muted(g) {
+    fillOutlined(g, [[-16, -6], [-8, -6], [2, -15], [2, 15], [-8, 6], [-16, 6]]);
+    for (const [w, color] of [[10, DARK], [5, 0xffffff]]) {
+      g.lineStyle(w, color, 1).lineBetween(8, -9, 20, 9).lineBetween(20, -9, 8, 9);
+    }
   },
   reset(g) {
     const r = 13;
@@ -51,8 +80,13 @@ export function addIconButton(scene, x, y, icon, onClick) {
   g.fillStyle(0x2f6fdc, 1).fillRoundedRect(-31, -31, 62, 60, 17);
   g.fillStyle(0x6aa4ff, 1).fillRoundedRect(-26, -28, 52, 26, 13); // top highlight
   g.lineStyle(3, DARK, 1).strokeRoundedRect(-31, -31, 62, 60, 17);
-  ICONS[icon](g);
-  const button = scene.add.container(x, y, [g]).setSize(66, 66).setDepth(50);
+  const glyph = scene.add.graphics();
+  ICONS[icon](glyph);
+  const button = scene.add.container(x, y, [g, glyph]).setSize(66, 66).setDepth(50);
+  button.setIcon = (name) => {
+    glyph.clear();
+    ICONS[name](glyph);
+  };
   button.setInteractive({ useHandCursor: true });
   button.on("pointerdown", () => button.setScale(0.92));
   button.on("pointerout", () => button.setScale(1));
@@ -60,6 +94,15 @@ export function addIconButton(scene, x, y, icon, onClick) {
     button.setScale(1);
     audio.play("click");
     onClick();
+  });
+  return button;
+}
+
+// Speaker button that mutes and unmutes all sound; the choice is remembered.
+export function addMuteButton(scene, x, y) {
+  const button = addIconButton(scene, x, y, audio.muted ? "muted" : "sound", () => {
+    audio.setMuted(!audio.muted);
+    button.setIcon(audio.muted ? "muted" : "sound");
   });
   return button;
 }

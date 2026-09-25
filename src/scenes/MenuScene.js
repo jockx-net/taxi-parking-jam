@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { addBackground, taxiKey } from "./art.js";
 import { audio } from "../audio/audio.js";
+import { addMuteButton, textStyle } from "./ui.js";
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -19,12 +20,17 @@ export class MenuScene extends Phaser.Scene {
       this.tweens.add({ targets: taxi, x: width + 300, duration: 7000 + i * 900, delay: i * 1300, repeat: -1, repeatDelay: 600 });
     });
 
-    const logo = this.add.image(width / 2, height * 0.3, "logo");
+    addMuteButton(this, width - 58, 46);
+    const logo = this.add.container(width / 2, height * 0.3, [
+      this.add.image(0, 0, "logo"),
+      this.add.text(0, -112, "TAXI", textStyle(110, "#f5c518", "#20232b")).setOrigin(0.5),
+      this.add.text(0, -22, "PARKING JAM", textStyle(74, "#ffffff", "#20232b")).setOrigin(0.5),
+    ]);
     this.tweens.add({ targets: logo, y: logo.y - 12, yoyo: true, repeat: -1, duration: 1400, ease: "Sine.easeInOut" });
 
     const play = this.add.rectangle(width / 2, height * 0.58, 320, 100, 0x2ecc71).setStrokeStyle(5, 0x1d8f4e).setInteractive({ useHandCursor: true });
     const label = this.add
-      .text(width / 2, height * 0.58, "PLAY", { fontFamily: "Arial", fontSize: "52px", color: "#ffffff", fontStyle: "bold" })
+      .text(width / 2, height * 0.58, "PLAY", textStyle(64, "#ffffff", "#1d8f4e"))
       .setOrigin(0.5);
     this.tweens.add({ targets: [play, label], scaleX: 1.05, scaleY: 1.05, yoyo: true, repeat: -1, duration: 700, ease: "Sine.easeInOut" });
     play.on("pointerdown", () => {

@@ -109,8 +109,9 @@ filled, and it leaves. Clear every taxi in the lot to win.
 ## Presentation
 
 - Portrait 720x1280 canvas, FIT-scaled and centered.
-- Icon buttons in one style: back (top left) and reset (top right, restarts the
-  level at once). The level list is paged, 20 levels a page.
+- Icon buttons in one style: back (top left), and a mute toggle plus reset (top
+  right; reset restarts the level at once). Mute is on every screen and remembered.
+- All text uses one bulky display font (Lilita One, bundled) with a dark outline. The level list is paged, 20 levels a page.
 - Sound, all synthesised in the browser (no audio files): a looping, cheerful
   music track; taxi engines (hum scales with how many are moving, a rev on
   start and on departure); door slide and slam; people's footsteps; UI clicks and
@@ -131,5 +132,4 @@ filled, and it leaves. Clear every taxi in the lot to win.
 
 ## Out of scope for the MVP
 
-Undo/recall, hints, power-ups, scoring/stars, monetization, a mute control,
-mobile packaging.
+Undo/recall, hints, power-ups, scoring/stars, monetization, mobile packaging.
