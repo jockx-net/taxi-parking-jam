@@ -13,9 +13,11 @@ export class LevelSelectScene extends Phaser.Scene {
     super("LevelSelect");
   }
 
+  // Opens on an explicit page (page turns), else on the page of the level just
+  // played, else on the page last browsed.
   init(data) {
-    // reopen on the page of the level just played, or the page last browsed
-    if (data && data.levelIndex !== undefined) this.registry.set("levelPage", Math.floor(data.levelIndex / PAGE_SIZE));
+    if (data && data.page !== undefined) this.registry.set("levelPage", data.page);
+    else if (data && data.levelIndex !== undefined) this.registry.set("levelPage", Math.floor(data.levelIndex / PAGE_SIZE));
     this.page = this.registry.get("levelPage") ?? 0;
   }
 
@@ -56,7 +58,6 @@ export class LevelSelectScene extends Phaser.Scene {
   }
 
   turn(step) {
-    this.registry.set("levelPage", this.page + step);
-    this.scene.restart();
+    this.scene.restart({ page: this.page + step }); // explicit, so stale data from the previous visit can't override it
   }
 }
