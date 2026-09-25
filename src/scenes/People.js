@@ -1,3 +1,5 @@
+import { audio } from "../audio/audio.js";
+
 // Drives one person sprite: walking (facing the way it moves, limbs swinging) and
 // idle fidgets (look around, scratch head or belly, check a watch).
 const STRIDE = 9; // pixels walked per walk-cycle frame
@@ -43,6 +45,8 @@ export class PersonView {
     const horizontal = Math.abs(dx) >= Math.abs(dy);
     const dir = horizontal ? (dx < 0 ? "left" : "right") : dy > 0 ? "down" : "up";
     const frame = Math.floor(this.distance / STRIDE) % 4;
+    if (frame !== this.lastFrame && frame % 2 === 1) audio.play("footstep");
+    this.lastFrame = frame;
     this.sprite.setFrame(`${dir === "right" ? "left" : dir}${frame}`).setFlipX(dir === "right");
   }
 

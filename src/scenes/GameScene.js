@@ -6,6 +6,8 @@ import { LEVELS } from "../data/levels/index.js";
 import { COLOR_HEX } from "../game/colors.js";
 import { CELL_PX, addBackground, personKey, taxiKey } from "./art.js";
 import { PersonView } from "./People.js";
+import { addIconButton } from "./ui.js";
+import { audio } from "../audio/audio.js";
 import { markCleared } from "./progress.js";
 
 const W = 720;
@@ -72,6 +74,7 @@ export class GameScene extends Phaser.Scene {
     this.laneC = { left: this.lane.left + o, right: this.lane.right - o, top: this.lane.top + o, bottom: this.lane.bottom - o };
     this.mainLaneY = MAIN_Y - o;
 
+    this.events.once("shutdown", () => audio.setTraffic(0));
     this.drawBackdrop();
     this.buildHud();
     this.buildSlots();
@@ -147,28 +150,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildHud() {
-    this.buildBackButton(58, 46);
+    addIconButton(this, 58, 46, "back", () => this.scene.start("LevelSelect", { levelIndex: this.levelIndex }));
+    addIconButton(this, W - 58, 46, "reset", () => this.scene.start("Game", { levelIndex: this.levelIndex }));
     this.add.text(W / 2, 46, this.config.name, { ...TEXT, fontSize: "40px", fontStyle: "bold" }).setOrigin(0.5);
-  }
-
-  // Icon-only "back to levels" button in the usual mobile-game style: chunky
-  // rounded blue key with a highlight, a bottom lip and a white arrow that
-  // presses down when tapped.
-  buildBackButton(x, y) {
-    const g = this.add.graphics();
-    g.fillStyle(0x0f2a5e, 1).fillRoundedRect(-31, -25, 62, 62, 17); // bottom lip
-    g.fillStyle(0x2f6fdc, 1).fillRoundedRect(-31, -31, 62, 60, 17);
-    g.fillStyle(0x6aa4ff, 1).fillRoundedRect(-26, -28, 52, 26, 13); // top highlight
-    g.lineStyle(3, 0x163a7a, 1).strokeRoundedRect(-31, -31, 62, 60, 17);
-    const arrow = [[-15, -1], [1, -16], [1, -8], [15, -8], [15, 6], [1, 6], [1, 14]];
-    g.fillStyle(0xffffff, 1).lineStyle(4, 0x163a7a, 1);
-    g.fillPoints(arrow.map(([px, py]) => ({ x: px, y: py })), true);
-    g.strokePoints(arrow.map(([px, py]) => ({ x: px, y: py })), true);
-    const button = this.add.container(x, y, [g]).setSize(66, 66).setDepth(50);
-    button.setInteractive({ useHandCursor: true });
-    button.on("pointerdown", () => button.setScale(0.92));
-    button.on("pointerout", () => button.setScale(1));
-    button.on("pointerup", () => this.scene.start("LevelSelect"));
   }
 
   buildSlots() {
@@ -274,11 +258,14 @@ export class GameScene extends Phaser.Scene {
     if (this.level.status !== "playing" || taxi.state !== "parked") return;
     const events = this.level.selectTaxi(taxi.id);
     if (events) {
+      audio.play("select");
       this.refresh();
       this.handleEvents(events);
     } else if (!this.level.hasFreeSlot()) {
+      audio.play("deny");
       this.shakeSlotTaxis();
     } else {
+      audio.play("deny");
       this.flashBlocked(taxi);
     }
   }
@@ -422,6 +409,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.traffic.add(vehicle);
     this.vehicles.set(taxiId, vehicle);
+    audio.play("engineStart");
   }
 
   showSeatDots(taxi, slot) {
@@ -516,12 +504,16 @@ export class GameScene extends Phaser.Scene {
       vehicle.door = { container, gfx: this.add.graphics(), progress: 0 };
       container.add(vehicle.door.gfx);
     }
+    if (to > 0) audio.play("doorOpen");
     return this.tween({
       targets: vehicle.door,
       progress: to,
       duration: to > 0 ? 520 : 420,
       ease: "Sine.easeInOut",
       onUpdate: () => this.drawDoor(vehicle),
+      onComplete: () => {
+        if (to === 0) audio.play("doorSlam");
+      },
     });
   }
 
@@ -565,6 +557,7 @@ export class GameScene extends Phaser.Scene {
     sprite.destroy();
     this.personSprites.delete(personId);
     this.personViews.delete(personId);
+    audio.play("pop");
 
     const dot = this.slotViews[slot].dots[seats - 1];
     if (dot) dot.setFillStyle(COLOR_HEX[taxi.color], 1);
@@ -614,6 +607,8 @@ export class GameScene extends Phaser.Scene {
   async departTaxi(taxiId) {
     const vehicle = this.vehicles.get(taxiId);
     await Promise.all(vehicle.pendingBoards ?? []);
+    audio.play("ding"); // full: ready to go
+    await this.wait(420);
     if (vehicle.door) await this.animateDoor(vehicle, 0);
     if (vehicle.door) {
       vehicle.door.container.destroy();
@@ -627,6 +622,7 @@ export class GameScene extends Phaser.Scene {
     view.taxiId = null;
     const x = this.slotCenter(slot).x;
     const roadY = this.mainLaneY;
+    audio.play("engineStart");
     vehicle.beginDeparture({
       reversePath: new RoadPath([{ x, y: BAY_Y }, { x, y: roadY }]),
       leavePath: new RoadPath([{ x, y: roadY }, { x: -320, y: roadY }]),
@@ -698,6 +694,11 @@ export class GameScene extends Phaser.Scene {
         sprite.setDepth(vehicle.state === "parked" ? 12 : 30);
       }
     }
+    this.engineTimer = (this.engineTimer ?? 0) + delta;
+    if (this.engineTimer > 150) {
+      this.engineTimer = 0;
+      audio.setTraffic(this.traffic.vehicles.filter((v) => v.moving).length);
+    }
     this.reassignTimer = (this.reassignTimer ?? 0) + Math.min(delta, 50) * this.simSpeed;
     if (this.reassignTimer > 200) {
       this.reassignTimer = 0;
@@ -715,26 +716,19 @@ export class GameScene extends Phaser.Scene {
     this.ended = true;
     if (this.level.status === "won") {
       markCleared(this.levelIndex);
-      this.time.delayedCall(500, () => this.scene.start("Result", { status: "won", levelIndex: this.levelIndex }));
+      audio.play("fanfare");
+      this.time.delayedCall(1400, () => this.scene.start("Result", { status: "won", levelIndex: this.levelIndex }));
     } else {
+      audio.play("gameOver");
       this.time.delayedCall(700, () => this.showLostOverlay());
     }
   }
 
+  // Game over: dim the lot and offer the two ways out, as icon buttons.
   showLostOverlay() {
     this.add.rectangle(W / 2, 640, W, 1280, 0x000000, 0.6).setDepth(100).setInteractive();
-    this.add.text(W / 2, 470, "Lot jammed!", { ...TEXT, fontSize: "56px", fontStyle: "bold", color: "#e64c3c" }).setOrigin(0.5).setDepth(101);
-    this.add
-      .text(W / 2, 545, "No slot free and nobody at the head can board.", { ...TEXT, fontSize: "24px", align: "center", wordWrap: { width: 560 } })
-      .setOrigin(0.5)
-      .setDepth(101);
-    this.button(W / 2, 660, "RETRY", 0x3b82f6, () => this.scene.start("Game", { levelIndex: this.levelIndex }));
-    this.button(W / 2, 770, "LEVEL SELECT", 0x555b6e, () => this.scene.start("LevelSelect"));
-  }
-
-  button(x, y, label, color, onClick) {
-    const rect = this.add.rectangle(x, y, 300, 80, color).setDepth(101).setInteractive({ useHandCursor: true });
-    this.add.text(x, y, label, { ...TEXT, fontSize: "30px", fontStyle: "bold" }).setOrigin(0.5).setDepth(102);
-    rect.on("pointerdown", onClick);
+    const retry = addIconButton(this, W / 2 - 70, 640, "reset", () => this.scene.start("Game", { levelIndex: this.levelIndex }));
+    const back = addIconButton(this, W / 2 + 70, 640, "back", () => this.scene.start("LevelSelect", { levelIndex: this.levelIndex }));
+    for (const button of [retry, back]) button.setDepth(110).setScale(1.5);
   }
 }

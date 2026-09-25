@@ -4,7 +4,6 @@
 // random player wins (easy levels high, hard levels low).
 // Usage: node tools/gen-levels.mjs [--range 1-10] [--offset N] [--assemble]
 // (--offset shifts the seed search so extra workers can race on a hard level)
-// Usage: node tools/gen-levels.mjs
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,6 +52,23 @@ const TABLE = [
   [8, 28, 6, 3, 3, 8],
 ];
 
+// Levels 21-100: ten-level waves. Within a wave the lot gets denser and the
+// queue less forgiving; each later wave adds colours, tightens the head and
+// eventually drops to two bays, so every difficulty band has several levels.
+function waveRow(n) {
+  const block = Math.floor((n - 21) / 10);
+  const pos = (n - 21) % 10;
+  const size = [6, 7, 8][(pos + block) % 3];
+  const density = Math.min(0.47, 0.3 + 0.013 * pos + 0.012 * block);
+  const taxis = Math.min(30, Math.max(8, Math.round(size * size * density)));
+  const colors = Math.min(6, 3 + Math.floor(block / 2) + (pos >= 5 ? 1 : 0));
+  const slots = block >= 3 && pos >= 7 ? 2 : 3;
+  const head = Math.max(slots === 2 ? 3 : 2, 4 - Math.floor(block / 3) - (pos >= 6 ? 1 : 0)); // two bays with a tiny head is unwinnable
+  const minDepth = Math.min(11, 3 + block + Math.floor(pos / 3));
+  return [size, taxis, colors, slots, head, minDepth];
+}
+for (let n = 21; n <= 100; n++) TABLE.push(waveRow(n));
+
 function tryLayout(size, count, colorCount, rng) {
   const occupied = new Set();
   const taxis = [];
@@ -88,8 +104,11 @@ function shuffle(items, rng) {
 }
 
 function generate([size, count, colorCount, slots, head, minDepth], i) {
-  const hi = Math.max(0.12, 0.95 - 0.043 * i);
-  const lo = Math.max(0, hi - 0.22);
+  // how often a random player should win: easy levels high, hard low; later waves restart the ramp
+  const wavePos = (i + 1 - 21) % 10;
+  const waveBlock = Math.floor((i + 1 - 21) / 10);
+  const hi = i < 20 ? Math.max(0.12, 0.95 - 0.043 * i) : Math.max(0.1, 0.85 - 0.08 * wavePos - 0.03 * waveBlock);
+  const lo = Math.max(0, hi - (i < 20 ? 0.22 : 0.3));
   let widen = 0;
   for (let seed = 1000 * (i + 1) + SEED_OFFSET; ; seed++) {
     if ((seed - 1000 * (i + 1) - SEED_OFFSET) % 300 === 299) widen += 0.05;

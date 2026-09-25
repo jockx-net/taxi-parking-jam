@@ -2,10 +2,21 @@ import Phaser from "phaser";
 import { addBackground } from "./art.js";
 import { LEVELS } from "../data/levels/index.js";
 import { loadCleared } from "./progress.js";
+import { addIconButton } from "./ui.js";
+import { audio } from "../audio/audio.js";
+
+const PAGE_SIZE = 20; // 4 columns x 5 rows
+const PAGES = Math.ceil(LEVELS.length / PAGE_SIZE);
 
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
     super("LevelSelect");
+  }
+
+  init(data) {
+    // reopen on the page of the level just played, or the page last browsed
+    if (data && data.levelIndex !== undefined) this.registry.set("levelPage", Math.floor(data.levelIndex / PAGE_SIZE));
+    this.page = this.registry.get("levelPage") ?? 0;
   }
 
   create() {
@@ -20,18 +31,32 @@ export class LevelSelectScene extends Phaser.Scene {
     const cols = 4;
     const cell = 150;
     const startX = width / 2 - ((cols - 1) * cell) / 2;
+    const first = this.page * PAGE_SIZE;
 
-    LEVELS.forEach((level, index) => {
-      const x = startX + (index % cols) * cell;
-      const y = 250 + Math.floor(index / cols) * cell;
+    for (let index = first; index < Math.min(first + PAGE_SIZE, LEVELS.length); index++) {
+      const slot = index - first;
+      const x = startX + (slot % cols) * cell;
+      const y = 250 + Math.floor(slot / cols) * cell;
       const done = cleared.has(index);
-      const button = this.add.rectangle(x, y, 120, 120, done ? 0x2e8b57 : 0x3b82f6).setInteractive({ useHandCursor: true });
-      this.add.text(x, y - 8, String(index + 1), { fontFamily: "Arial", fontSize: "44px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
-      this.add
-        .text(x, y + 36, `${level.slots} slots  h${level.queueHeadSize}`, { fontFamily: "Arial", fontSize: "16px", color: "#dfe6f5" })
-        .setOrigin(0.5);
-      if (done) this.add.text(x + 44, y - 46, "✓", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff" }).setOrigin(0.5);
-      button.on("pointerdown", () => this.scene.start("Game", { levelIndex: index }));
-    });
+      const button = this.add.rectangle(x, y, 120, 120, done ? 0x2e8b57 : 0x3b82f6).setStrokeStyle(4, done ? 0x1d5c39 : 0x1f4fa8).setInteractive({ useHandCursor: true });
+      this.add.text(x, y, String(index + 1), { fontFamily: "Arial", fontSize: "44px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+      if (done) this.add.text(x + 44, y - 46, "\u2713", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff" }).setOrigin(0.5);
+      button.on("pointerdown", () => {
+        audio.play("click");
+        this.scene.start("Game", { levelIndex: index });
+      });
+    }
+
+    if (this.page > 0) addIconButton(this, width / 2 - 200, 1030, "back", () => this.turn(-1));
+    if (this.page < PAGES - 1) addIconButton(this, width / 2 + 200, 1030, "next", () => this.turn(1));
+    const dots = this.add.graphics();
+    for (let p = 0; p < PAGES; p++) {
+      dots.fillStyle(p === this.page ? 0xffffff : 0x55607a, 1).fillCircle(width / 2 + (p - (PAGES - 1) / 2) * 30, 1030, p === this.page ? 9 : 7);
+    }
+  }
+
+  turn(step) {
+    this.registry.set("levelPage", this.page + step);
+    this.scene.restart();
   }
 }

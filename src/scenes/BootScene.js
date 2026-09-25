@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { addPersonFrames, loadArt } from "./art.js";
+import { audio } from "../audio/audio.js";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -16,6 +17,7 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     addPersonFrames(this.textures);
+    audio.attach(this.sound); // music starts as soon as the browser lets audio play
     this.scene.start("Menu");
   }
 }

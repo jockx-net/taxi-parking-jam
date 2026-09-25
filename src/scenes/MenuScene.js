@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { addBackground, taxiKey } from "./art.js";
+import { audio } from "../audio/audio.js";
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -26,6 +27,9 @@ export class MenuScene extends Phaser.Scene {
       .text(width / 2, height * 0.58, "PLAY", { fontFamily: "Arial", fontSize: "52px", color: "#ffffff", fontStyle: "bold" })
       .setOrigin(0.5);
     this.tweens.add({ targets: [play, label], scaleX: 1.05, scaleY: 1.05, yoyo: true, repeat: -1, duration: 700, ease: "Sine.easeInOut" });
-    play.on("pointerdown", () => this.scene.start("LevelSelect"));
+    play.on("pointerdown", () => {
+      audio.play("click");
+      this.scene.start("LevelSelect");
+    });
   }
 }
